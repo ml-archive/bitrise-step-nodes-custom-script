@@ -4,7 +4,7 @@ require 'xcodeproj'
 require 'fileutils'
 require 'pp'
 require 'plist'
-require_relative 'hockeyver'
+require 'hockeyver'
 require 'json'
 
 # -------
