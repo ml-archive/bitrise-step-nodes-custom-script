@@ -20,7 +20,6 @@ fastlane_version "2.38.0"
 default_platform :ios
 
 DEFAULT_USERNAME="ci@nodes.dk"
-DEFAULT_HOCKEY_API_TOKEN = "04a45f4ff5384fa5bdffa5582ab48140"
 
 $deploy_config = Array.new
 
@@ -68,7 +67,7 @@ platform :ios do
       UI.message "Deploy config: #{pp $deploy_config}"
     
       $deploy_config.each do |target|
-        hockey(api_token: DEFAULT_HOCKEY_API_TOKEN,
+        hockey(api_token: ENV['HOCKEY_API_TOKEN'],
         ipa: target['testflight_ipa'],
         dsym: target['dsym'],
         notes: target['changelog'],
