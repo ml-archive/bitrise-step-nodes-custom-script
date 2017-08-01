@@ -64,24 +64,11 @@ toolkit:
 
 
 inputs:
-  - example_step_input: Default Value - you can leave this empty if you want to
+  - script_input: "Parse project settings"
     opts:
-      title: "Example Step Input"
-      summary: Summary. No more than 2-3 sentences.
-      description: |
-        Description of this input.
-
-        Can be Markdown formatted text.
+      title: "Choose script"
+      summary: Select a script to run      
       is_expand: true
       is_required: true
-      value_options: []
-
-outputs:
-  - EXAMPLE_STEP_OUTPUT:
-    opts:
-      title: "Example Step Output"
-      summary: Summary. No more than 2-3 sentences.
-      description: |
-        Description of this output.
-
-        Can be Markdown formatted text.
+      value_options: ["Parse project settings", "Fastlane copy", "Prep Slack message"]
+ 
