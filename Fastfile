@@ -68,7 +68,7 @@ platform :ios do
     
       $deploy_config.each do |target|
         hockey(api_token: ENV['HOCKEY_API_TOKEN'],
-        ipa: target['testflight_ipa'],
+        ipa: target['hockey_ipa'],
         dsym: target['dsym'],
         notes: target['changelog'],
         notify: "0")
@@ -111,7 +111,7 @@ platform :ios do
 
     # Setup provisioning profile
     UI.message "Installing provisoning profile"
-    provisioning_profile_path = "../#{options['provisioning-profile']}"
+    provisioning_profile_path = "../#{options['provisioning-profile']}"   
     system "cp '#{provisioning_profile_path}' '#{ENV['HOME']}/Library/MobileDevice/Provisioning\ Profiles/'"
 
     # Build    
