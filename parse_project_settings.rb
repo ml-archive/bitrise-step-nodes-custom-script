@@ -219,5 +219,6 @@ system "bitrise envman add --key BITRISE_CERTIFICATE_PASSPHRASE --value '#{passw
 system "bitrise envman add --key BITRISE_PROVISION_URL --value '#{profiles}' --no-expand"
 system "bitrise envman add --key HOCKEY_UPLOAD_FLAG --value '#{hockey_upload}' --no-expand"
 system "bitrise envman add --key TESTFLIGHT_UPLOAD_FLAG --value '#{testflight_upload}' --no-expand"
+system "bitrise envman add --key SLACK_CHANNEL --value '#{project_settings['slack-channel']}' --no-expand "
 puts green "|- Succesfully generated build config."
 pp build_config unless not VERBOSE
