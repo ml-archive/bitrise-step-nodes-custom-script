@@ -10,6 +10,7 @@ if [ "${script_input}" == 'Fastlane copy' ]; then
 elif [ "${script_input}" == 'Prep Slack message' ]; then
 	ruby "${THIS_SCRIPT_DIR}/prepare_slack.rb"
 else 
+	gem install hockeyver
 	ruby "${THIS_SCRIPT_DIR}/parse_project_settings.rb"
 fi
 
