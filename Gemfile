@@ -1,1 +1,0 @@
-gem 'hockeyver', '~> 0.1.6'
