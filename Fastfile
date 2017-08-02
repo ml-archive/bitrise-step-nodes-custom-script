@@ -71,7 +71,8 @@ platform :ios do
         ipa: target['hockey_ipa'],
         dsym: target['dsym'],
         notes: target['changelog'],
-        notify: "0")
+        notify: "0",
+        status: "2")
       UI.message "Target: #{target}"
       end
     else 
