@@ -153,7 +153,7 @@ unless DEBUG_MODE
 
     # Get numbers from hockey
     hockey_app_id = val["settings"]["hockey-app-id"]
-    buildnumber = HockeyVer.parse_hockey_version hockey_app_id, ENV["HOCKEY_TOKEN"]
+    buildnumber = HockeyVer.parse_hockey_version hockey_app_id, ENV["HOCKEY_API_TOKEN"]
 
     hockey_version = buildnumber["version"]
     hockey_build = buildnumber["build"].to_i
