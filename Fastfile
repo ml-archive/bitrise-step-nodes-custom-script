@@ -38,7 +38,7 @@ platform :ios do
 
     if lane == :build
       UI.message "Saving deployment information."
-      File.open(yourfile, 'deploy_config.json') { |file| file.write($deploy_config.to_json) }
+      File.open('deploy_config.json', 'w') { |file| file.write($deploy_config.to_json) }
       puts $deploy_config
     end
   end
@@ -108,6 +108,8 @@ platform :ios do
     # Testflight
     # ----------
 
+    provisioning_profile_path = "../#{options['provisioning-profile']}"  
+
     # Build    
     UI.message "Creating Testflight build"
     ipa_path = gym(scheme: options['scheme'], configuration: options['configuration']) 
@@ -120,15 +122,12 @@ platform :ios do
     hockey_ipa_path = ipa_path.gsub('.ipa', '-hockey.ipa')
     system "cp '#{ipa_path}' '#{hockey_ipa_path}'"
 
-    UI.message "Installing enterprise certificate"
-    system "security import '../Signing/enterprise.p12' -P ''"
-
     resign(ipa: hockey_ipa_path,
     signing_identity: "iPhone Distribution: Nodes Aps",
     provisioning_profile: "#{Dir.pwd}/../Signing/enterprise.mobileprovision",
     use_app_entitlements: false)
 
-    UI.message "Hockey IPA at: #{hockey_ipa_path}"
+    UI.message "Hockey IPA at: #{hockey_ipa_path}" 
 
     $deploy_config << {
       'testflight_ipa' => ipa_path,
