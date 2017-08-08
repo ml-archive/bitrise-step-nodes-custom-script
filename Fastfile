@@ -38,7 +38,7 @@ platform :ios do
 
     if lane == :build
       UI.message "Saving deployment information."
-      system "bitrise envman add --key DEPLOY_CONFIG --value '#{$deploy_config.to_json}' --no-expand"
+      File.open(yourfile, 'deploy_config.json') { |file| file.write($deploy_config.to_json) }
       puts $deploy_config
     end
   end
@@ -62,8 +62,9 @@ platform :ios do
 
   lane :deploy_hockey do |options|    
    
-    unless ENV['HOCKEY_UPLOAD_FLAG'] == '0'
-      $deploy_config = JSON.parse ENV['DEPLOY_CONFIG']
+    if ENV['HOCKEY_UPLOAD_FLAG'] == '1' || ENV['TESTFLIGHT_UPLOAD_FLAG'] == '1'
+      file = File.read('deploy_config.json')
+      $deploy_config = JSON.parse file
       UI.message "Deploy config: #{pp $deploy_config}"
     
       $deploy_config.each do |target|
@@ -76,13 +77,14 @@ platform :ios do
       UI.message "Target: #{target}"
       end
     else 
-      UI.important "Skipping hockey upload due to project.yml settings"
+      UI.important "Skipping hockey upload due to project.yml settings."
     end
   end 
 
   lane :deploy_testflight do |options|
     unless ENV['TESTFLIGHT_UPLOAD_FLAG'] == '0'
-      $deploy_config = JSON.parse ENV['DEPLOY_CONFIG']
+      file = File.read('deploy_config.json')
+      $deploy_config = JSON.parse file
       UI.message "Deploy config: #{pp $deploy_config}"
 
       $deploy_config.each do |target|
@@ -105,15 +107,6 @@ platform :ios do
 
     # Testflight
     # ----------
-
-    # Setup certs
-    UI.message "Installing certificate"
-    system "security import '../#{options['certificate']}' -P ''"
-
-    # Setup provisioning profile
-    UI.message "Installing provisoning profile"
-    provisioning_profile_path = "../#{options['provisioning-profile']}"   
-    system "cp '#{provisioning_profile_path}' '#{ENV['HOME']}/Library/MobileDevice/Provisioning\ Profiles/'"
 
     # Build    
     UI.message "Creating Testflight build"
@@ -157,10 +150,6 @@ platform :ios do
 
     # Return match
     return matches[0].to_s[2...-2] # Removes the brackets and quotes surrounding ["team_name"]
-  end
-
-  def define_hockey_json(deploy_config)
-
   end
 
 end
