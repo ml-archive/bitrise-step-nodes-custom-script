@@ -154,6 +154,11 @@ unless DEBUG_MODE
     # Get numbers from hockey
     hockey_app_id = val["settings"]["hockey-app-id"]
     buildnumber = HockeyVer.parse_hockey_version hockey_app_id, ENV["HOCKEY_API_TOKEN"]
+    puts "Build Number:#{buildnumber}"
+    if buildnumber.nil? 
+      puts yellow "|- No build found on Hockey, proceeding with build"
+      next
+    end
 
     hockey_version = buildnumber["version"]
     hockey_build = buildnumber["build"].to_i
