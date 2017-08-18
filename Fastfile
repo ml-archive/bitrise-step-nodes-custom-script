@@ -112,7 +112,7 @@ platform :ios do
 
     # Build    
     UI.message "Creating Testflight build"
-    ipa_path = gym(scheme: options['scheme'], configuration: options['configuration']) 
+    ipa_path = gym(project: options['xcodeproj'], scheme: options['scheme'], configuration: options['configuration']) 
     UI.message "Generated IPA at: #{ipa_path}"
 
     # Hockey
