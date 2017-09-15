@@ -114,6 +114,7 @@ platform :ios do
     # Build    
     UI.message "Creating Testflight build"    
     ipa_path = gym(
+      project: options['xcodeproj'],
       scheme: options['scheme'], 
       configuration: options['configuration'],
       archive_path: archive_path
