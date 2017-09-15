@@ -109,29 +109,43 @@ platform :ios do
     # ----------
 
     provisioning_profile_path = "../#{options['provisioning-profile']}"  
+    archive_path = "#{Dir.pwd}/../archive.xcarchive"
 
     # Build    
-    UI.message "Creating Testflight build"
-    ipa_path = gym(scheme: options['scheme'], configuration: options['configuration']) 
+    UI.message "Creating Testflight build"    
+    ipa_path = gym(
+      scheme: options['scheme'], 
+      configuration: options['configuration'],
+      archive_path: archive_path
+      ) 
     UI.message "Generated IPA at: #{ipa_path}"
+
+    UI.message "Re-exporting archive without bitcode"    
+    second_path = gym(
+      scheme: options['scheme'],
+      output_name: "#{options['scheme']}-hockey", 
+      configuration: options['configuration'],
+      include_bitcode: false,
+      skip_build_archive: true,
+      archive_path: archive_path
+      ) 
+    UI.message "Generated non-bitcode IPA at: #{second_path}"
 
     # Hockey
     # ----------
 
     UI.message "Creating Hockey build"
-    hockey_ipa_path = ipa_path.gsub('.ipa', '-hockey.ipa')
-    system "cp '#{ipa_path}' '#{hockey_ipa_path}'"
-
-    resign(ipa: hockey_ipa_path,
+  
+    resign(ipa: second_path,
     signing_identity: "iPhone Distribution: Nodes Aps",
     provisioning_profile: "#{Dir.pwd}/../Signing/enterprise.mobileprovision",
     use_app_entitlements: false)
 
-    UI.message "Hockey IPA at: #{hockey_ipa_path}" 
+    UI.message "Hockey IPA at: #{second_path}" 
 
     $deploy_config << {
       'testflight_ipa' => ipa_path,
-      'hockey_ipa' => hockey_ipa_path,
+      'hockey_ipa' => second_path,
       'dsym' => ipa_path.sub('.ipa', '.app.dSYM.zip'),
       'hockey_app_id' => options['hockey-app-id'],
       'changelog' => ENV['COMMIT_CHANGELOG'],
