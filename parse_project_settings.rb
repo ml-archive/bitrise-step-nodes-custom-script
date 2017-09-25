@@ -208,7 +208,7 @@ validated_targets.each_pair { |key, val|
   passwords << '|' unless profiles.empty?
 
   certificates << "file://./#{content['certificate']}"
-  profiles << "file://./#{content['provisioning-profile']}"
+  profiles << "file://./#{content['provisioning-profile']}" if content.key?('provisioning-profile')
   profiles << "|file://./#{content['provisioning-team-profile']}" if content.key?('provisioning-team-profile')
 
   build_config[key] = content
