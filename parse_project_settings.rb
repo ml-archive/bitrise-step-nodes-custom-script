@@ -59,6 +59,7 @@ project_settings = YAML.load_file(PROJECT_FILE_NAME)
 xcodeproj_path = project_settings['xcodeproj']
 configuration = project_settings["configuration"]
 PROJECT_ROOT_DIR = File.dirname(xcodeproj_path) + "/"
+export_method = project_settings['method'] ||= "app-store" 
 
 # Load Xcode project
 raise red "|- Couldn't find Xcode project at: #{xcodeproj_path}" unless File.exist?(xcodeproj_path)
@@ -223,6 +224,7 @@ pp certificates if VERBOSE
 
 # Save to env
 system "bitrise envman add --key BUILD_CONFIG --value '#{build_config.to_json}' --no-expand" unless DEBUG_MODE
+system "bitrise envman add --key EXPORT_METHOD --value #{export_method} --no-expand" unless DEBUG_MODE
 system "bitrise envman add --key BITRISE_CERTIFICATE_URL --value '#{certificates}' --no-expand" unless DEBUG_MODE
 system "bitrise envman add --key BITRISE_CERTIFICATE_PASSPHRASE --value '#{passwords}' --no-expand" unless DEBUG_MODE
 system "bitrise envman add --key BITRISE_PROVISION_URL --value '#{profiles}' --no-expand" unless DEBUG_MODE

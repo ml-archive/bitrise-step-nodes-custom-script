@@ -110,15 +110,17 @@ platform :ios do
 
     provisioning_profile_path = "../#{options['provisioning-profile']}"  
     archive_path = "#{Dir.pwd}/../archive.xcarchive"
+    export_method = ENV['EXPORT_METHOD'] 
 
     # Build    
     UI.message "Creating Testflight build"    
     ipa_path = gym(
       project: options['xcodeproj'],
       scheme: options['scheme'], 
-      configuration: options['configuration'],
+      configuration: options['configuration'],    
+      export_method: export_method,
       archive_path: archive_path
-      ) 
+      )       
     UI.message "Generated IPA at: #{ipa_path}"
 
     UI.message "Re-exporting archive without bitcode"    
