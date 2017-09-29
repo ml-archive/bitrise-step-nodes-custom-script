@@ -111,9 +111,36 @@ platform :ios do
     provisioning_profile_path = "../#{options['provisioning-profile']}"  
     archive_path = "#{Dir.pwd}/../archive.xcarchive"
     export_method = ENV['EXPORT_METHOD'] 
+    options_path = "#{Dir.pwd}/../Signing/ExportOptions.plist"
+
 
     # Build    
     UI.message "Creating Testflight build"    
+    
+    # This is a temporary workaround due to a bug with bitrise
+    if File.exists?(options_path)
+    ipa_path = gym(
+      project: options['xcodeproj'],
+      scheme: options['scheme'], 
+      configuration: options['configuration'],    
+      export_method: export_method,
+      archive_path: archive_path,
+      export_options: options_path
+      )       
+    UI.message "Generated IPA at: #{ipa_path}"
+
+    UI.message "Re-exporting archive without bitcode"    
+    second_path = gym(
+      scheme: options['scheme'],
+      output_name: "#{options['scheme']}-hockey", 
+      configuration: options['configuration'],
+      include_bitcode: false,
+      skip_build_archive: true,
+      archive_path: archive_path,
+      export_options: options_path
+      ) 
+    UI.message "Generated non-bitcode IPA at: #{second_path}"
+  else 
     ipa_path = gym(
       project: options['xcodeproj'],
       scheme: options['scheme'], 
@@ -133,6 +160,7 @@ platform :ios do
       archive_path: archive_path
       ) 
     UI.message "Generated non-bitcode IPA at: #{second_path}"
+  end
 
     # Hockey
     # ----------
