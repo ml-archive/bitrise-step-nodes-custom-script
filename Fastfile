@@ -119,7 +119,8 @@ platform :ios do
       scheme: options['scheme'], 
       configuration: options['configuration'],    
       export_method: export_method,
-      archive_path: archive_path
+      archive_path: archive_path,
+      export_xcargs: "-allowProvisioningUpdates"
       )       
     UI.message "Generated IPA at: #{ipa_path}"
 
@@ -130,7 +131,8 @@ platform :ios do
       configuration: options['configuration'],
       include_bitcode: false,
       skip_build_archive: true,
-      archive_path: archive_path
+      archive_path: archive_path,
+      export_xcargs: "-allowProvisioningUpdates"
       ) 
     UI.message "Generated non-bitcode IPA at: #{second_path}"
 
