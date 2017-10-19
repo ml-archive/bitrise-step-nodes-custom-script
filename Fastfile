@@ -20,6 +20,9 @@ fastlane_version "2.38.0"
 default_platform :ios
 
 DEFAULT_USERNAME="ci@nodes.dk"
+DEFAULT_MATCH_REPO="https://github.com/nodes-projects/internal-certificates-ios"
+DEFAULT_ENTERPRISE_BRANCH="nodes-enterprise"
+DEFAULT_ENTERPRISE_TEAM="HW27H6H98R"
 
 $deploy_config = Array.new
 
@@ -108,24 +111,35 @@ platform :ios do
     # Testflight
     # ----------
 
-    provisioning_profile_path = "../#{options['provisioning-profile']}"  
+
+    bundle_id = options['bundle_id']
     archive_path = "#{Dir.pwd}/../archive.xcarchive"
     export_method = ENV['EXPORT_METHOD'] 
-    options_path = "#{Dir.pwd}/../Signing/ExportOptions.plist"
+    export_method_match = export_method.gsub('-', '')
 
+     # Certificates and profiles
+    UI.message "Installing certificate and profiles"
+
+    match(git_url: DEFAULT_MATCH_REPO,
+          type: export_method_match,
+          app_identifier: bundle_id,       
+          readonly: true)
+
+    path_env_var = "sigh_#{bundle_id}_#{export_method_match}_profile-path"
+    team_env_var = "sigh_#{bundle_id}_#{export_method_match}_team-id"
+    provisioning_profile_path = ENV["#{path_env_var}"]
+    team_id = ENV["#{team_env_var}"]
 
     # Build    
     UI.message "Creating Testflight build"    
-    
-    # This is a temporary workaround due to a bug with bitrise
-    if File.exists?(options_path)
+
     ipa_path = gym(
       project: options['xcodeproj'],
       scheme: options['scheme'], 
       configuration: options['configuration'],    
       export_method: export_method,
       archive_path: archive_path,
-      export_options: options_path
+      export_team_id: team_id
       )       
     UI.message "Generated IPA at: #{ipa_path}"
 
@@ -134,43 +148,30 @@ platform :ios do
       scheme: options['scheme'],
       output_name: "#{options['scheme']}-hockey", 
       configuration: options['configuration'],
-      include_bitcode: false,
-      skip_build_archive: true,
-      archive_path: archive_path,
-      export_options: options_path
-      ) 
-    UI.message "Generated non-bitcode IPA at: #{second_path}"
-  else 
-    ipa_path = gym(
-      project: options['xcodeproj'],
-      scheme: options['scheme'], 
-      configuration: options['configuration'],    
-      export_method: export_method,
-      archive_path: archive_path
-      )       
-    UI.message "Generated IPA at: #{ipa_path}"
-
-    UI.message "Re-exporting archive without bitcode"    
-    second_path = gym(
-      scheme: options['scheme'],
-      output_name: "#{options['scheme']}-hockey", 
-      configuration: options['configuration'],
-      include_bitcode: false,
+     # include_bitcode: false,
       skip_build_archive: true,
       archive_path: archive_path
       ) 
     UI.message "Generated non-bitcode IPA at: #{second_path}"
-  end
 
     # Hockey
     # ----------
+    UI.message "Installing certificate and profiles"
+        match(
+          git_url: DEFAULT_MATCH_REPO,
+          git_branch: DEFAULT_ENTERPRISE_BRANCH,
+          type: "enterprise",
+          app_identifier: "*",         
+          team_id: DEFAULT_ENTERPRISE_TEAM, 
+          readonly: true)
 
     UI.message "Creating Hockey build"
-  
+    
     resign(ipa: second_path,
     signing_identity: "iPhone Distribution: Nodes Aps",
-    provisioning_profile: "#{Dir.pwd}/../Signing/enterprise.mobileprovision",
-    use_app_entitlements: false)
+    provisioning_profile: ENV['sigh_*_enterprise_profile-path'],
+    use_app_entitlements: false,
+    verbose: true)
 
     UI.message "Hockey IPA at: #{second_path}" 
 

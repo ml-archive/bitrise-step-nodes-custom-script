@@ -182,9 +182,6 @@ puts ""
 puts bold "Creating information required for build"
 
 build_config = Hash.new
-certificates = ""
-profiles = ""
-passwords = ""
 
 validated_targets.each_pair { |key, val|
   content = val['settings']
@@ -204,30 +201,12 @@ validated_targets.each_pair { |key, val|
   content['xcode_version'] = "#{xcode_version}"
   content['xcode_build'] = "#{xcode_build}"
 
-  profiles << '|' unless profiles.empty?
-  certificates << '|' unless profiles.empty?
-  passwords << '|' unless profiles.empty?
-
-  certificates << "file://./#{content['certificate']}"
-  profiles << "file://./#{content['provisioning-profile']}" if content.key?('provisioning-profile')
-  profiles << "|file://./#{content['provisioning-team-profile']}" if content.key?('provisioning-team-profile')
-
   build_config[key] = content
 }
-
-certificates << "|file://./Signing/enterprise.p12"
-passwords << "|"
-profiles << "|file://./Signing/enterprise.mobileprovision"
-
-pp profiles if VERBOSE
-pp certificates if VERBOSE
 
 # Save to env
 system "bitrise envman add --key BUILD_CONFIG --value '#{build_config.to_json}' --no-expand" unless DEBUG_MODE
 system "bitrise envman add --key EXPORT_METHOD --value #{export_method} --no-expand" unless DEBUG_MODE
-system "bitrise envman add --key BITRISE_CERTIFICATE_URL --value '#{certificates}' --no-expand" unless DEBUG_MODE
-system "bitrise envman add --key BITRISE_CERTIFICATE_PASSPHRASE --value '#{passwords}' --no-expand" unless DEBUG_MODE
-system "bitrise envman add --key BITRISE_PROVISION_URL --value '#{profiles}' --no-expand" unless DEBUG_MODE
 system "bitrise envman add --key HOCKEY_UPLOAD_FLAG --value '#{hockey_upload}' --no-expand" unless DEBUG_MODE
 system "bitrise envman add --key TESTFLIGHT_UPLOAD_FLAG --value '#{testflight_upload}' --no-expand" unless DEBUG_MODE
 system "bitrise envman add --key SLACK_CHANNEL --value '#{project_settings['slack-channel']}' --no-expand " unless DEBUG_MODE

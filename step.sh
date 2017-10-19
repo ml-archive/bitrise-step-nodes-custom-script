@@ -6,7 +6,7 @@ if [ "${script_input}" == 'Fastlane copy' ]; then
 	if [ ! -d "$PWD/fastlane" ]; then
 		mkdir $PWD/fastlane
 	fi
-	cp ${THIS_SCRIPT_DIR}/Fastfile $PWD/fastlane 
+	cp ${THIS_SCRIPT_DIR}/Fastfile $PWD/fastlane
 elif [ "${script_input}" == 'Prep Slack message' ]; then
 	ruby "${THIS_SCRIPT_DIR}/prepare_slack.rb"
 else 
