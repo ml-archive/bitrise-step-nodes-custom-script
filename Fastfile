@@ -133,6 +133,8 @@ platform :ios do
     # Build    
     UI.message "Creating Testflight build"    
 
+    disable_automatic_code_signing
+
     ipa_path = gym(
       project: options['xcodeproj'],
       scheme: options['scheme'], 
