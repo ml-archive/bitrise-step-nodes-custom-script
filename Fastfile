@@ -126,10 +126,8 @@ platform :ios do
           readonly: true)
 
     path_env_var = "sigh_#{bundle_id}_#{export_method_match}_profile-path"
-    name_env_var = "sigh_#{bundle_id}_#{export_method_match}_profile-name"
     team_env_var = "sigh_#{bundle_id}_#{export_method_match}_team-id"
     provisioning_profile_path = ENV["#{path_env_var}"]
-    profile_name = ENV["#{name_env_var}"]
     team_id = ENV["#{team_env_var}"]
 
     # Build    
@@ -144,7 +142,7 @@ platform :ios do
       export_method: export_method,
       archive_path: archive_path,
       export_team_id: team_id,
-      export_options: { provisioningProfiles: { bundle_id => profile_name} }
+      codesigning_identity: "iPhone Distribution: Nodes ApS"
       )       
     UI.message "Generated IPA at: #{ipa_path}"
 
