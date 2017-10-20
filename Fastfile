@@ -121,6 +121,11 @@ platform :ios do
     UI.message "Installing certificate and profiles"
 
     match(git_url: DEFAULT_MATCH_REPO,
+          type: "development",
+          app_identifier: bundle_id,       
+          readonly: true)
+
+    match(git_url: DEFAULT_MATCH_REPO,
           type: export_method_match,
           app_identifier: bundle_id,       
           readonly: true)
