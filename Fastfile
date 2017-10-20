@@ -141,8 +141,7 @@ platform :ios do
       configuration: options['configuration'],    
       export_method: export_method,
       archive_path: archive_path,
-      export_team_id: team_id,
-      codesigning_identity: "iPhone Distribution: Nodes ApS"
+      export_team_id: team_id
       )       
     UI.message "Generated IPA at: #{ipa_path}"
 
