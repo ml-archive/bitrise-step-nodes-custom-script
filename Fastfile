@@ -148,7 +148,7 @@ platform :ios do
       scheme: options['scheme'],
       output_name: "#{options['scheme']}-hockey", 
       configuration: options['configuration'],
-     # include_bitcode: false,
+      include_bitcode: false,
       skip_build_archive: true,
       archive_path: archive_path
       ) 
