@@ -20,7 +20,7 @@ fastlane_version "2.38.0"
 default_platform :ios
 
 DEFAULT_USERNAME="ci@nodes.dk"
-DEFAULT_MATCH_REPO="https://github.com/nodes-projects/internal-certificates-ios"
+DEFAULT_MATCH_REPO="git@github.com:nodes-projects/internal-certificates-ios.git"
 DEFAULT_ENTERPRISE_BRANCH="nodes-enterprise"
 DEFAULT_ENTERPRISE_TEAM="HW27H6H98R"
 
