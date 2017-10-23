@@ -118,6 +118,9 @@ platform :ios do
     export_method_match = export_method.gsub('-', '')
 
      # Certificates and profiles
+
+
+
     UI.message "Installing certificate and profiles"
 
     match(git_url: DEFAULT_MATCH_REPO,
@@ -126,14 +129,28 @@ platform :ios do
           readonly: true)
 
     path_env_var = "sigh_#{bundle_id}_#{export_method_match}_profile-path"
-    team_env_var = "sigh_#{bundle_id}_#{export_method_match}_team-id"
+    team_env_var = "sigh_#{bundle_id}_#{export_method_match}_team-id"    
     provisioning_profile_path = ENV["#{path_env_var}"]
     team_id = ENV["#{team_env_var}"]
 
+    # disable_automatic_code_signing
+    # Waiting on this to be resolved: https://github.com/fastlane/fastlane/issues/10497
+    project = Xcodeproj::Project.open(options['xcodeproj'])
+      project.targets.each do |target|
+        target.build_configurations.each do |config|
+        config.build_settings['CODE_SIGN_STYLE'] = "Manual"         
+      end
+    end
+    project.save
+
+    update_project_provisioning(
+      xcodeproj: options['xcodeproj'],
+      target_filter: options['scheme'],
+      profile: provisioning_profile_path
+    )
+
     # Build    
     UI.message "Creating Testflight build"    
-
-    disable_automatic_code_signing
 
     ipa_path = gym(
       project: options['xcodeproj'],
@@ -141,7 +158,8 @@ platform :ios do
       configuration: options['configuration'],    
       export_method: export_method,
       archive_path: archive_path,
-      export_team_id: team_id
+      export_team_id: team_id,
+      codesigning_identity: "iPhone Distribution"
       )       
     UI.message "Generated IPA at: #{ipa_path}"
 
