@@ -78,6 +78,9 @@ platform :ios do
         notify: "0",
         status: "2")
       UI.message "Target: #{target}"
+      $deploy_config << {
+        'hockey_link' => lane_context[SharedValues::HOCKEY_DOWNLOAD_LINK]
+      }      
       end
     else 
       UI.important "Skipping hockey upload due to project.yml settings."
@@ -118,16 +121,25 @@ platform :ios do
     export_method_match = export_method.gsub('-', '')
 
      # Certificates and profiles
-
-
-
     UI.message "Installing certificate and profiles"
 
-    match(git_url: DEFAULT_MATCH_REPO,
+    match_branch = options["match-git-branch"]
+
+    # Anyone want to refactor this so that it's prettier? Maybe read branch from the matchfile?
+    if match_branch.nil? 
+      match(git_url: DEFAULT_MATCH_REPO,
           type: export_method_match,
           app_identifier: bundle_id,       
           readonly: true)
-
+     
+    else 
+      match(git_url: DEFAULT_MATCH_REPO,
+          git_branch: match_branch,
+          type: export_method_match,
+          app_identifier: bundle_id,       
+          readonly: true)
+    
+    end
     path_env_var = "sigh_#{bundle_id}_#{export_method_match}_profile-path"
     team_env_var = "sigh_#{bundle_id}_#{export_method_match}_team-id"    
     provisioning_profile_path = ENV["#{path_env_var}"]
@@ -136,8 +148,8 @@ platform :ios do
     # disable_automatic_code_signing
     # Waiting on this to be resolved: https://github.com/fastlane/fastlane/issues/10497
     project = Xcodeproj::Project.open(options['xcodeproj'])
-      project.targets.each do |target|
-        target.build_configurations.each do |config|
+    project.targets.each do |target|
+      target.build_configurations.each do |config|         
         config.build_settings['CODE_SIGN_STYLE'] = "Manual"         
       end
     end
