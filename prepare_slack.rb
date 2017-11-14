@@ -7,13 +7,16 @@ HOCKEY_BASE_URL = 'https://rink.hockeyapp.net/apps/'
 
 config = JSON.parse ENV['BUILD_CONFIG']
 
+puts "**** #{ENV['BUILD_CONFIG']}"
+
 message = ""
 
 config.each_pair { |target, info|
-	hockeyURL = HOCKEY_BASE_URL + info["hockey-app-id"]
+	
 	scheme = info["scheme"]
 	configuration = info["configuration"]
 	version = "#{info["xcode_version"]} (#{info["xcode_build"]})"
+	hockeyURL = info["hockey_link"]
 
 	puts "Hockey URL: #{hockeyURL}"
 	puts "Scheme: #{scheme}"

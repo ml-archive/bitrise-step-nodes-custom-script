@@ -64,13 +64,14 @@ platform :ios do
   end
 
   lane :deploy_hockey do |options|    
-   
+    
     if ENV['HOCKEY_UPLOAD_FLAG'] == '1' || ENV['TESTFLIGHT_UPLOAD_FLAG'] == '1'
       file = File.read('deploy_config.json')
       $deploy_config = JSON.parse file
-      UI.message "Deploy config: #{pp $deploy_config}"
+     # UI.message "Deploy config: #{pp $deploy_config}"
     
       $deploy_config.each do |target|
+        UI.message "Starting hockey upload target #{target}"
         hockey(api_token: ENV['HOCKEY_API_TOKEN'],
         ipa: target['hockey_ipa'],
         dsym: target['dsym'],
@@ -78,9 +79,9 @@ platform :ios do
         notify: "0",
         status: "2")
       UI.message "Target: #{target}"
-      $deploy_config << {
-        'hockey_link' => lane_context[SharedValues::HOCKEY_DOWNLOAD_LINK]
-      }      
+      #$deploy_config << {
+      #  'hockey_link' => lane_context[SharedValues::HOCKEY_DOWNLOAD_LINK]
+     # }      
       end
     else 
       UI.important "Skipping hockey upload due to project.yml settings."
