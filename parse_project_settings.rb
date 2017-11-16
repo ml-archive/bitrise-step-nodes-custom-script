@@ -124,10 +124,21 @@ project_settings["targets"].each_pair { |key, val|
     validated_targets[key] = { "settings" => val, "target" => xcode_target }
 }
 
+
 # Make sure we have something to build
 unless validated_targets.count > 0
   raise red "|- No valid targets to build, build failed."
 end
+
+# Temp fix for riide, will make this more reusable in the future. This breaks down the
+# targets into groups of 6, and uses the RIIDE_PROJECT env var to determine which 
+# of the subset to use
+length = 6
+if validated_targets.count > length   
+  start = ENV["RIIDE_PROJECT"].to_i * length
+  start -= length 
+  validated_targets = validated_targets.select { |k, v| validated_targets.keys[start, length].include? k }  
+end 
 
 puts ""
 puts bold "Starting Hockey versions verification"
