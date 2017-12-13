@@ -144,7 +144,7 @@ platform :ios do
     path_env_var = "sigh_#{bundle_id}_#{export_method_match}_profile-path"
     team_env_var = "sigh_#{bundle_id}_#{export_method_match}_team-id"    
     provisioning_profile_path = ENV["#{path_env_var}"]
-    team_id = ENV["#{team_env_var}"]
+    team_id = ENV["#{team_env_var}"] 
 
     # disable_automatic_code_signing
     # Waiting on this to be resolved: https://github.com/fastlane/fastlane/issues/10497
@@ -206,7 +206,7 @@ platform :ios do
     use_app_entitlements: false,
     verbose: true)
 
-    UI.message "Hockey IPA at: #{second_path}" 
+    UI.message "Hockey IPA at: #{second_path}"   
 
     $deploy_config << {
       'testflight_ipa' => ipa_path,
@@ -224,8 +224,8 @@ platform :ios do
     content = File.open(profile).read().scrub("?")
 
     # Get match for team name
-    matches = content.scan /<key>TeamName<\/key>[\s]*<string>([\w\s]*)<\/string>/
-
+    matches = content.scan /<key>TeamName<\/key>[\s]*<string>(...*)<\/string>/
+   
     # Return match
     return matches[0].to_s[2...-2] # Removes the brackets and quotes surrounding ["team_name"]
   end
