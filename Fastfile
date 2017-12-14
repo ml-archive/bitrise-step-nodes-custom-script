@@ -95,11 +95,19 @@ platform :ios do
       UI.message "Deploy config: #{pp $deploy_config}"
 
       $deploy_config.each do |target|
-        pilot(ipa: target['testflight_ipa'],
-       username: DEFAULT_USERNAME,
-       team_name: target['team_name'],
-       skip_waiting_for_build_processing: true)
-      end
+        unless target['itc_provider'].nil? 
+          pilot(ipa: target['testflight_ipa'],
+         username: DEFAULT_USERNAME,
+         team_name: target['team_name'],
+         skip_waiting_for_build_processing: true,
+         itc_provider: target['itc_provider'])        
+        else 
+         pilot(ipa: target['testflight_ipa'],
+         username: DEFAULT_USERNAME,
+         team_name: target['team_name'],
+         skip_waiting_for_build_processing: true)
+        end
+      end      
     else 
       UI.important "Skipping testflight upload due to project.yml settings"
     end
@@ -214,7 +222,8 @@ platform :ios do
       'dsym' => ipa_path.sub('.ipa', '.app.dSYM.zip'),
       'hockey_app_id' => options['hockey-app-id'],
       'changelog' => ENV['COMMIT_CHANGELOG'],
-      'team_name' => get_team_name(provisioning_profile_path)
+      'team_name' => get_team_name(provisioning_profile_path),
+      'itc_provider' => options["itc_provider"]
     }
     UI.success "Successfully built everything."
   end
