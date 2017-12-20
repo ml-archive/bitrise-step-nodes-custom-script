@@ -16,7 +16,7 @@ config.each_pair { |target, info|
 	scheme = info["scheme"]
 	configuration = info["configuration"]
 	version = "#{info["xcode_version"]} (#{info["xcode_build"]})"
-	hockeyURL = info["hockey_link"]
+	hockeyURL = HOCKEY_BASE_URL + info["hockey-app-id"]
 
 	puts "Hockey URL: #{hockeyURL}"
 	puts "Scheme: #{scheme}"
