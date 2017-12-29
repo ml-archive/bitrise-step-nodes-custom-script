@@ -94,19 +94,12 @@ platform :ios do
       $deploy_config = JSON.parse file
       UI.message "Deploy config: #{pp $deploy_config}"
 
-      $deploy_config.each do |target|
-        unless target['itc_provider'].nil? 
-          pilot(ipa: target['testflight_ipa'],
-         username: DEFAULT_USERNAME,
-         team_name: target['team_name'],
-         skip_waiting_for_build_processing: true,
-         itc_provider: target['itc_provider'])        
-        else 
-         pilot(ipa: target['testflight_ipa'],
-         username: DEFAULT_USERNAME,
-         team_name: target['team_name'],
-         skip_waiting_for_build_processing: true)
-        end
+      $deploy_config.each do |target|     
+        pilot(ipa: target['testflight_ipa'],
+        username: DEFAULT_USERNAME,
+        team_name: target['team_name'],
+        skip_waiting_for_build_processing: true,
+        itc_provider: target['itc_provider'])     
       end      
     else 
       UI.important "Skipping testflight upload due to project.yml settings"
@@ -132,30 +125,25 @@ platform :ios do
      # Certificates and profiles
     UI.message "Installing certificate and profiles"
 
-    match_branch = options["match-git-branch"]
-
-    # Anyone want to refactor this so that it's prettier? Maybe read branch from the matchfile?
-    if match_branch.nil? 
-      match(git_url: DEFAULT_MATCH_REPO,
-          type: export_method_match,
-          app_identifier: bundle_id,       
-          readonly: true)
-     
-    else 
-      match(git_url: DEFAULT_MATCH_REPO,
-          git_branch: match_branch,
-          type: export_method_match,
-          app_identifier: bundle_id,       
-          readonly: true)
+    match_branch = options["match-git-branch"]    
+    match(
+      git_url: DEFAULT_MATCH_REPO,
+      git_branch: match_branch,
+      type: export_method_match,
+      app_identifier: bundle_id,       
+      readonly: true
+    )
     
-    end
+   
     path_env_var = "sigh_#{bundle_id}_#{export_method_match}_profile-path"
     team_env_var = "sigh_#{bundle_id}_#{export_method_match}_team-id"    
     provisioning_profile_path = ENV["#{path_env_var}"]
     team_id = ENV["#{team_env_var}"] 
 
+    UI.message "Switching to manual code signing"
     disable_automatic_code_signing    
 
+    UI.message "Setting provisioning profile"
     update_project_provisioning(
       xcodeproj: options['xcodeproj'],
       target_filter: options['scheme'],
