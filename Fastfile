@@ -154,15 +154,7 @@ platform :ios do
     provisioning_profile_path = ENV["#{path_env_var}"]
     team_id = ENV["#{team_env_var}"] 
 
-    # disable_automatic_code_signing
-    # Waiting on this to be resolved: https://github.com/fastlane/fastlane/issues/10497
-    project = Xcodeproj::Project.open(options['xcodeproj'])
-    project.targets.each do |target|
-      target.build_configurations.each do |config|         
-        config.build_settings['CODE_SIGN_STYLE'] = "Manual"         
-      end
-    end
-    project.save
+    disable_automatic_code_signing    
 
     update_project_provisioning(
       xcodeproj: options['xcodeproj'],
