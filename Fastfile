@@ -23,8 +23,10 @@ DEFAULT_USERNAME="ci@nodes.dk"
 DEFAULT_MATCH_REPO="git@github.com:nodes-projects/internal-certificates-ios.git"
 DEFAULT_ENTERPRISE_BRANCH="nodes-enterprise"
 DEFAULT_ENTERPRISE_TEAM="HW27H6H98R"
+DEFAULT_SLACK_WEBHOOK="https://hooks.slack.com/services/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"
 
 $deploy_config = Array.new
+$notify_config = Array.new
 
 platform :ios do
 
@@ -41,7 +43,6 @@ platform :ios do
 
     if lane == :build
      save_deploy_info
-
     end
   end
 
@@ -55,11 +56,12 @@ platform :ios do
 
   lane :build do |options|
     build_config = JSON.parse ENV['BUILD_CONFIG']
-    UI.message "Parsed config: #{pp build_config}"
+    UI.message "Parsed config: #{pp build_config}"    
 
     build_config.each_pair do |key, target|
       build(target)
     end
+    system "bitrise envman add --key NOTIFY_CONFIG --value '#{$notify_config.to_json}' --no-expand"
   end
 
   lane :deploy_hockey do |options|    
@@ -109,8 +111,32 @@ platform :ios do
   end
 
   lane :notify_slack do |options| 
-    UI.message "Hello world"
+    ENV["SLACK_URL"] = DEFAULT_SLACK_WEBHOOK
+    #ENV["ERROR_MESSAGE"] = "Oh no"
+   
+    config = JSON.parse ENV["NOTIFY_CONFIG"]
+    UI.message "#{config}"
 
+    config.each do |target|
+    unless ENV["ERROR_MESSAGE"]
+      UI.message "Success!"
+      slack(
+        message: "Build succeeded for #{target['scheme']} #{target['configuration']}",
+        channel: ENV["SLACK_CHANNEL"],        
+        success: true,
+        username: "iOS CI",
+        default_payloads: [:git_branch, :git_author]       
+      )
+     else 
+      UI.message "Error"
+      slack(
+        message: "New error message",
+        channel: ENV["SLACK_CHANNEL"],
+        success: false,        
+        default_payloads: [:git_branch, :git_author]
+      )
+      end       
+    end
   end 
 
   # ---------------------------------------
@@ -210,12 +236,16 @@ platform :ios do
       'hockey_app_id' => options['hockey-app-id'],
       'changelog' => ENV['COMMIT_CHANGELOG'],
       'team_name' => get_team_name(provisioning_profile_path),
-      'itc_provider' => options["itc_provider"],
+      'itc_provider' => options["itc_provider"]      
+    }
+
+    $notify_config << {
       'scheme' => options['scheme'],
       'configuration' => options['configuration'],
       'xcode_version' => options['xcode_version'],
       'xcode_build' => options['xcode_build']
     }
+
     UI.success "Successfully built everything."
   end
 
