@@ -39,11 +39,8 @@ platform :ios do
   after_all do |lane|
     puts "After all, checking lane #{lane}"
 
-    unless lane == :deploy_testflight
-      UI.message "Saving deployment information."
-      File.open('deploy_config.json', 'w') { |file| file.write($deploy_config.to_json) }
-      puts $deploy_config
-      system "bitrise envman add --key DEPLOY_CONFIG --value '#{$deploy_config.to_json}' --no-expand"
+    if lane == :build
+     save_deploy_info
 
     end
   end
@@ -87,6 +84,7 @@ platform :ios do
       target['hockey_link'] = info['config_url']
       $deploy_config << target
       end     
+      save_deploy_info
     else 
       UI.important "Skipping hockey upload due to project.yml settings."
     end
@@ -109,6 +107,11 @@ platform :ios do
       UI.important "Skipping testflight upload due to project.yml settings"
     end
   end
+
+  lane :notify_slack do |options| 
+    UI.message "Hello world"
+
+  end 
 
   # ---------------------------------------
   # CUSTOM
@@ -226,6 +229,13 @@ platform :ios do
     # Return match
     return matches[0].to_s[2...-2] # Removes the brackets and quotes surrounding ["team_name"]
   end
+
+  def save_deploy_info()
+      UI.message "Saving deployment information."
+      File.open('deploy_config.json', 'w') { |file| file.write($deploy_config.to_json) }
+      puts $deploy_config
+      system "bitrise envman add --key DEPLOY_CONFIG --value '#{$deploy_config.to_json}' --no-expand"
+  end 
 
 end
 
