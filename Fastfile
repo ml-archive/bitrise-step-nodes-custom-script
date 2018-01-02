@@ -39,10 +39,12 @@ platform :ios do
   after_all do |lane|
     puts "After all, checking lane #{lane}"
 
-    if lane == :build
+    unless lane == :deploy_testflight
       UI.message "Saving deployment information."
       File.open('deploy_config.json', 'w') { |file| file.write($deploy_config.to_json) }
       puts $deploy_config
+      system "bitrise envman add --key DEPLOY_CONFIG --value '#{$deploy_config.to_json}' --no-expand"
+
     end
   end
 
@@ -68,9 +70,12 @@ platform :ios do
     if ENV['HOCKEY_UPLOAD_FLAG'] == '1' || ENV['TESTFLIGHT_UPLOAD_FLAG'] == '1'
       file = File.read('deploy_config.json')
       $deploy_config = JSON.parse file
-     # UI.message "Deploy config: #{pp $deploy_config}"
-    
-      $deploy_config.each do |target|
+     
+      # This is messy because we need to mutate the deploy_config by adding the new
+      # hockey URL and I dont know how to do that in Ruby
+      old_deploy_config = $deploy_config.clone
+      $deploy_config.clear  
+      old_deploy_config.each do |target|
         UI.message "Starting hockey upload target #{target}"
         hockey(api_token: ENV['HOCKEY_API_TOKEN'],
         ipa: target['hockey_ipa'],
@@ -78,11 +83,10 @@ platform :ios do
         notes: target['changelog'],
         notify: "0",
         status: "2")
-      UI.message "Target: #{target}"
-      #$deploy_config << {
-      #  'hockey_link' => lane_context[SharedValues::HOCKEY_DOWNLOAD_LINK]
-     # }      
-      end
+      info = lane_context[Actions::SharedValues::HOCKEY_BUILD_INFORMATION]    
+      target['hockey_link'] = info['config_url']
+      $deploy_config << target
+      end     
     else 
       UI.important "Skipping hockey upload due to project.yml settings."
     end
@@ -203,7 +207,11 @@ platform :ios do
       'hockey_app_id' => options['hockey-app-id'],
       'changelog' => ENV['COMMIT_CHANGELOG'],
       'team_name' => get_team_name(provisioning_profile_path),
-      'itc_provider' => options["itc_provider"]
+      'itc_provider' => options["itc_provider"],
+      'scheme' => options['scheme'],
+      'configuration' => options['configuration'],
+      'xcode_version' => options['xcode_version'],
+      'xcode_build' => options['xcode_build']
     }
     UI.success "Successfully built everything."
   end

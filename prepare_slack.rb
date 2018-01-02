@@ -5,18 +5,16 @@ require 'json'
 
 HOCKEY_BASE_URL = 'https://rink.hockeyapp.net/apps/'
 
-config = JSON.parse ENV['BUILD_CONFIG']
-
-puts "**** #{ENV['BUILD_CONFIG']}"
-
+config = JSON.parse ENV['DEPLOY_CONFIG']
+puts "**** #{config}"
 message = ""
 
-config.each_pair { |target, info|
-	
+config.each do |info|	
+
 	scheme = info["scheme"]
 	configuration = info["configuration"]
 	version = "#{info["xcode_version"]} (#{info["xcode_build"]})"
-	hockeyURL = HOCKEY_BASE_URL + info["hockey-app-id"]
+	hockeyURL = info['hockey_link']
 
 	puts "Hockey URL: #{hockeyURL}"
 	puts "Scheme: #{scheme}"
@@ -38,6 +36,6 @@ config.each_pair { |target, info|
 	if ENV['HOCKEY_UPLOAD_FLAG'] == '0' && ENV['TESTFLIGHT_UPLOAD_FLAG'] == '0'
 		message += "Why did you even make this build? :thinking_face: \n\n"
 	end 
-}
+end
 
 system "bitrise envman add --key SLACK_MESSAGE --value '#{message}' --no-expand"
