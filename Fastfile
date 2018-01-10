@@ -96,7 +96,7 @@ platform :ios do
       $deploy_config = JSON.parse file
       UI.message "Deploy config: #{pp $deploy_config}"
 
-      $deploy_config.each do |target|     
+      $deploy_config.each do |target|            
         pilot(ipa: target['testflight_ipa'],
         username: DEFAULT_USERNAME,
         team_name: target['team_name'],
@@ -203,13 +203,19 @@ platform :ios do
 
     UI.message "Hockey IPA at: #{second_path}"   
 
+    # If for some reason the get_team_name doesnt work, you can manually specify it
+    team_name = options["team_name"]
+    if team_name.nil?
+      team_name = get_team_name(provisioning_profile_path)
+    end
+
     $deploy_config << {
       'testflight_ipa' => ipa_path,
       'hockey_ipa' => second_path,
       'dsym' => ipa_path.sub('.ipa', '.app.dSYM.zip'),
       'hockey_app_id' => options['hockey-app-id'],
       'changelog' => ENV['COMMIT_CHANGELOG'],
-      'team_name' => get_team_name(provisioning_profile_path),
+      'team_name' => team_name,
       'itc_provider' => options["itc_provider"],
       'scheme' => options['scheme'],
       'configuration' => options['configuration'],
