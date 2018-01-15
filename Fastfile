@@ -148,7 +148,9 @@ platform :ios do
     team_id = ENV["#{team_env_var}"] 
 
     UI.message "Switching to manual code signing"
-    disable_automatic_code_signing    
+    disable_automatic_code_signing(
+      path: options['xcodeproj']
+    )    
 
     UI.message "Setting provisioning profile"
     update_project_provisioning(
@@ -173,6 +175,7 @@ platform :ios do
 
     UI.message "Re-exporting archive without bitcode"    
     second_path = gym(
+      project: options['xcodeproj'],
       scheme: options['scheme'],
       output_name: "#{options['scheme']}-hockey", 
       configuration: options['configuration'],
