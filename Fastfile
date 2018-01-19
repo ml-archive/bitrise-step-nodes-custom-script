@@ -114,18 +114,27 @@ platform :ios do
     ENV["SLACK_URL"] = DEFAULT_SLACK_WEBHOOK
     #ENV["ERROR_MESSAGE"] = "Oh no"
    
-    config = JSON.parse ENV["NOTIFY_CONFIG"]
-    UI.message "#{config}"
+    #config = JSON.parse ENV["NOTIFY_CONFIG"]
+
+    # Debug data
+    config = JSON.parse '[{"scheme":"FirstTarget","configuration":"Test (Live)","xcode_version":"1.0","xcode_build":"116"}]'
+    ENV["SLACK_CHANNEL"] = "spam"
+
+    UI.message "#{ENV["NOTIFY_CONFIG"]}"
 
     config.each do |target|
     unless ENV["ERROR_MESSAGE"]
       UI.message "Success!"
       slack(
-        message: "Build succeeded for #{target['scheme']} #{target['configuration']}",
+        message: "Build succeeded for #{target['scheme']} #{target['configuration']} \n Version #{target["xcode_version"]} (#{target["xcode_build"]})",
         channel: ENV["SLACK_CHANNEL"],        
         success: true,
         username: "iOS CI",
-        default_payloads: [:git_branch, :git_author]       
+        payload: {
+        	"Hockey" => "link",
+        	"Testflight" => "Processing"
+        },
+        default_payloads: [:git_branch, :git_author]        
       )
      else 
       UI.message "Error"
