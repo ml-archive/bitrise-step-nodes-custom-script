@@ -98,7 +98,7 @@ platform :ios do
       $deploy_config = JSON.parse file
       UI.message "Deploy config: #{pp $deploy_config}"
 
-      $deploy_config.each do |target|     
+      $deploy_config.each do |target|            
         pilot(ipa: target['testflight_ipa'],
         username: DEFAULT_USERNAME,
         team_name: target['team_name'],
@@ -165,8 +165,7 @@ platform :ios do
       type: export_method_match,
       app_identifier: bundle_id,       
       readonly: true
-    )
-    
+    )    
    
     path_env_var = "sigh_#{bundle_id}_#{export_method_match}_profile-path"
     team_env_var = "sigh_#{bundle_id}_#{export_method_match}_team-id"    
@@ -174,7 +173,9 @@ platform :ios do
     team_id = ENV["#{team_env_var}"] 
 
     UI.message "Switching to manual code signing"
-    disable_automatic_code_signing    
+    disable_automatic_code_signing(
+      path: options['xcodeproj']
+    )    
 
     UI.message "Setting provisioning profile"
     update_project_provisioning(
@@ -199,6 +200,7 @@ platform :ios do
 
     UI.message "Re-exporting archive without bitcode"    
     second_path = gym(
+      project: options['xcodeproj'],
       scheme: options['scheme'],
       output_name: "#{options['scheme']}-hockey", 
       configuration: options['configuration'],
@@ -229,6 +231,12 @@ platform :ios do
 
     UI.message "Hockey IPA at: #{second_path}"   
 
+    # If for some reason the get_team_name doesnt work, you can manually specify it
+    team_name = options["team_name"]
+    if team_name.nil?
+      team_name = get_team_name(provisioning_profile_path)
+    end
+
     $deploy_config << {
       'testflight_ipa' => ipa_path,
       'hockey_ipa' => second_path,
@@ -239,7 +247,7 @@ platform :ios do
       'itc_provider' => options["itc_provider"]      
     }
 
-    $notify_config << {
+    $notify_config << {  
       'scheme' => options['scheme'],
       'configuration' => options['configuration'],
       'xcode_version' => options['xcode_version'],
