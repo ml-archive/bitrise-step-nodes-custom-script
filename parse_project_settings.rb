@@ -199,6 +199,7 @@ validated_targets.each_pair { |key, val|
 
   # Pass platform, xcodeproj
   content['xcodeproj'] = xcode_project.path.to_path
+  content['workspace'] = project_settings['workspace']
   content['platform'] = val['target'].platform_name
   content['configuration'] = configuration
   content['bundle_id'] = val['target'].build_settings(configuration)['PRODUCT_BUNDLE_IDENTIFIER']
