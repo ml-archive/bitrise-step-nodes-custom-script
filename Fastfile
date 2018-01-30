@@ -196,8 +196,18 @@ platform :ios do
     # Build    
     UI.message "Creating Testflight build"    
 
+    # Fastlane wont let you pass both a workspace and project
+    workspace = options['workspace']
+    project = options['xcodeproj']
+    unless workspace.nil? 
+      project = nil
+      UI.message "Installing Cocoapods"    
+      cocoapods # I mean this is why you're using a workspace, right?
+    end
+
     ipa_path = gym(
-      project: options['xcodeproj'],
+      workspace: workspace,
+      project: project,
       scheme: options['scheme'], 
       configuration: options['configuration'],    
       export_method: export_method,
@@ -209,7 +219,8 @@ platform :ios do
 
     UI.message "Re-exporting archive without bitcode"    
     second_path = gym(
-      project: options['xcodeproj'],
+      workspace: workspace,
+      project: project,
       scheme: options['scheme'],
       output_name: "#{options['scheme']}-hockey", 
       configuration: options['configuration'],
