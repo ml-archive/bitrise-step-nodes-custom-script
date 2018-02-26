@@ -61,32 +61,36 @@ platform :ios do
     build_config.each_pair do |key, target|
       build(target)
     end
-    system "bitrise envman add --key NOTIFY_CONFIG --value '#{$notify_config.to_json}' --no-expand"
+    save_notify_info
   end
 
   lane :deploy_hockey do |options|    
     
     if ENV['HOCKEY_UPLOAD_FLAG'] == '1' || ENV['TESTFLIGHT_UPLOAD_FLAG'] == '1'
+      
+      $notify_config.clear
       file = File.read('deploy_config.json')
-      $deploy_config = JSON.parse file
-     
-      # This is messy because we need to mutate the deploy_config by adding the new
-      # hockey URL and I dont know how to do that in Ruby
-      old_deploy_config = $deploy_config.clone
-      $deploy_config.clear  
-      old_deploy_config.each do |target|
+      $deploy_config = JSON.parse file     
+  
+      $deploy_config.each do |target|
         UI.message "Starting hockey upload target #{target}"
-        hockey(api_token: ENV['HOCKEY_API_TOKEN'],
-        ipa: target['hockey_ipa'],
-        dsym: target['dsym'],
-        notes: target['changelog'],
-        notify: "0",
-        status: "2")
-      info = lane_context[Actions::SharedValues::HOCKEY_BUILD_INFORMATION]    
-      target['hockey_link'] = info['config_url']
-      $deploy_config << target
+        hockey(
+          api_token: ENV['HOCKEY_API_TOKEN'],
+          ipa: target['hockey_ipa'],
+          dsym: target['dsym'],
+          notes: target['changelog'],
+          notify: "0"   
+        )
+        info = lane_context[Actions::SharedValues::HOCKEY_BUILD_INFORMATION]       
+        $notify_config << {
+          'scheme' => target['scheme'],
+          'configuration' => target['configuration'],
+          'xcode_version' => target['xcode_version'],
+          'xcode_build' => target['xcode_build'],
+          'hockey_link' => info['config_url']
+        }
       end     
-      save_deploy_info
+      save_notify_info
     else 
       UI.important "Skipping hockey upload due to project.yml settings."
     end
@@ -117,7 +121,7 @@ platform :ios do
     #config = JSON.parse ENV["NOTIFY_CONFIG"]
 
     # Debug data
-    config = JSON.parse '[{"scheme":"FirstTarget","configuration":"Test (Live)","xcode_version":"1.0","xcode_build":"116"}]'
+    config = JSON.parse '[{"scheme":"FirstTarget","configuration":"Test (Live)","xcode_version":"1.0","xcode_build":"125","hockey_link":"https://rink.hockeyapp.net/manage/apps/562313/app_versions/88"}]'
     ENV["SLACK_CHANNEL"] = "spam"
 
     UI.message "#{ENV["NOTIFY_CONFIG"]}"
@@ -125,14 +129,22 @@ platform :ios do
     config.each do |target|
     unless ENV["ERROR_MESSAGE"]
       UI.message "Success!"
+      hockeylink = target['hockey_link'] || "Hockey build disabled"
+   
+      if ENV['TESTFLIGHT_UPLOAD_FLAG'] == '1'
+        testflightmessage = "New build processing on Testflight"
+      else 
+        testflightmessage = "Testflight build disabled"
+      end
+
       slack(
         message: "Build succeeded for #{target['scheme']} #{target['configuration']} \n Version #{target["xcode_version"]} (#{target["xcode_build"]})",
         channel: ENV["SLACK_CHANNEL"],        
         success: true,
         username: "iOS CI",
         payload: {
-        	"Hockey" => "link",
-        	"Testflight" => "Processing"
+        	"Hockey" => hockeylink,
+        	"Testflight" => testflightmessage
         },
         default_payloads: [:git_branch, :git_author]        
       )
@@ -267,7 +279,11 @@ platform :ios do
       'hockey_app_id' => options['hockey-app-id'],
       'changelog' => ENV['COMMIT_CHANGELOG'],
       'team_name' => get_team_name(provisioning_profile_path),
-      'itc_provider' => options["itc_provider"]      
+      'itc_provider' => options["itc_provider"],
+      'scheme' => options['scheme'],
+      'configuration' => options['configuration'],
+      'xcode_version' => options['xcode_version'],
+      'xcode_build' => options['xcode_build']      
     }
 
     $notify_config << {  
@@ -297,6 +313,9 @@ platform :ios do
       puts $deploy_config
       system "bitrise envman add --key DEPLOY_CONFIG --value '#{$deploy_config.to_json}' --no-expand"
   end 
+  def save_notify_info() 
+    system "bitrise envman add --key NOTIFY_CONFIG --value '#{$notify_config.to_json}' --no-expand"
+  end
 
 end
 
