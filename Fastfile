@@ -180,7 +180,7 @@ platform :ios do
       archive_path: archive_path,
       export_team_id: team_id,
       codesigning_identity: "iPhone Distribution"
-      )       
+    )       
     UI.message "Generated IPA at: #{ipa_path}"
 
     UI.message "Re-exporting archive without bitcode"    
@@ -193,7 +193,7 @@ platform :ios do
       include_bitcode: false,
       skip_build_archive: true,
       archive_path: archive_path
-      ) 
+    ) 
     UI.message "Generated non-bitcode IPA at: #{second_path}"
 
     # Hockey
@@ -205,15 +205,18 @@ platform :ios do
           type: "enterprise",
           app_identifier: "*",         
           team_id: DEFAULT_ENTERPRISE_TEAM, 
-          readonly: true)
+          readonly: true
+        )
 
     UI.message "Creating Hockey build"
     
-    resign(ipa: second_path,
-    signing_identity: "iPhone Distribution: Nodes Aps",
-    provisioning_profile: ENV['sigh_*_enterprise_profile-path'],
-    use_app_entitlements: false,
-    verbose: true)
+    resign(
+      ipa: second_path,
+      signing_identity: "iPhone Distribution: Nodes Aps",
+      provisioning_profile: ENV['sigh_*_enterprise_profile-path'],
+      use_app_entitlements: false,
+      verbose: true
+    )
 
     UI.message "Hockey IPA at: #{second_path}"   
 
