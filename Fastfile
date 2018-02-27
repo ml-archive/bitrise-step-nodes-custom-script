@@ -149,8 +149,10 @@ platform :ios do
 
     UI.message "Switching to manual code signing"
     disable_automatic_code_signing(
-      path: options['xcodeproj']
-    )    
+      path: options['xcodeproj'],
+      targets: options['scheme'],
+      team_id: team_id
+    )     
 
     UI.message "Setting provisioning profile"
     update_project_provisioning(
