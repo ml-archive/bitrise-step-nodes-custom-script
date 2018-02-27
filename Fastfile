@@ -47,20 +47,20 @@ platform :ios do
   end
 
   error do |lane, exception|
-
+    # Send error notification
+    addErrorMessage("Build failed in lane: #{lane} with message: \n #{exception}")
   end
 
   # ---------------------------------------
   # LANES
   # ---------------------------------------
 
-  lane :build do |options|
+  lane :build do |options| 
     build_config = JSON.parse ENV['BUILD_CONFIG']
-    UI.message "Parsed config: #{pp build_config}"    
-
+    UI.message "Parsed config: #{pp build_config}" 
     build_config.each_pair do |key, target|
       build(target)
-    end
+    end  
     save_notify_info
   end
 
@@ -116,8 +116,6 @@ platform :ios do
 
   lane :notify_slack do |options| 
     ENV["SLACK_URL"] = DEFAULT_SLACK_WEBHOOK
-   
-    ENV["SLACK_CHANNEL"] = "spam"
 
     error = File.read('../error_message')
 
@@ -127,10 +125,8 @@ platform :ios do
       # Debug data
       #config = JSON.parse '[{"scheme":"FirstTarget","configuration":"Test (Live)","xcode_version":"1.0","xcode_build":"125","hockey_link":"https://rink.hockeyapp.net/manage/apps/562313/app_versions/88"}]'
    
-      config.each do |target|   
-       
-        hockeylink = target['hockey_link'] || "Hockey build disabled"
-   
+      config.each do |target|          
+        hockeylink = target['hockey_link'] || "Hockey build disabled"   
         if ENV['TESTFLIGHT_UPLOAD_FLAG'] == '1'
           testflightmessage = "New build processing on Testflight"
         else 
@@ -155,8 +151,10 @@ platform :ios do
         message: error,
         channel: ENV["SLACK_CHANNEL"],
         success: false,        
+        username: "iOS CI",
         default_payloads: [:git_branch, :git_author]
       )
+      File.delete('../error_message')
     end         
   end 
 
@@ -315,6 +313,10 @@ platform :ios do
   end 
   def save_notify_info() 
     system "bitrise envman add --key NOTIFY_CONFIG --value '#{$notify_config.to_json}' --no-expand"
+  end
+
+  def addErrorMessage(message)  
+    File.open('../error_message', 'w') { |file| file.write(message) }
   end
 
 end
