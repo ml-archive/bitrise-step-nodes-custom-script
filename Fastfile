@@ -116,48 +116,48 @@ platform :ios do
 
   lane :notify_slack do |options| 
     ENV["SLACK_URL"] = DEFAULT_SLACK_WEBHOOK
-    #ENV["ERROR_MESSAGE"] = "Oh no"
    
-    #config = JSON.parse ENV["NOTIFY_CONFIG"]
-
-    # Debug data
-    config = JSON.parse '[{"scheme":"FirstTarget","configuration":"Test (Live)","xcode_version":"1.0","xcode_build":"125","hockey_link":"https://rink.hockeyapp.net/manage/apps/562313/app_versions/88"}]'
     ENV["SLACK_CHANNEL"] = "spam"
 
-    UI.message "#{ENV["NOTIFY_CONFIG"]}"
+    error = File.read('../error_message')
 
-    config.each do |target|
-    unless ENV["ERROR_MESSAGE"]
+    unless error
       UI.message "Success!"
-      hockeylink = target['hockey_link'] || "Hockey build disabled"
+      config = JSON.parse ENV["NOTIFY_CONFIG"]
+      # Debug data
+      #config = JSON.parse '[{"scheme":"FirstTarget","configuration":"Test (Live)","xcode_version":"1.0","xcode_build":"125","hockey_link":"https://rink.hockeyapp.net/manage/apps/562313/app_versions/88"}]'
    
-      if ENV['TESTFLIGHT_UPLOAD_FLAG'] == '1'
-        testflightmessage = "New build processing on Testflight"
-      else 
-        testflightmessage = "Testflight build disabled"
-      end
+      config.each do |target|   
+       
+        hockeylink = target['hockey_link'] || "Hockey build disabled"
+   
+        if ENV['TESTFLIGHT_UPLOAD_FLAG'] == '1'
+          testflightmessage = "New build processing on Testflight"
+        else 
+          testflightmessage = "Testflight build disabled"
+        end
 
-      slack(
-        message: "Build succeeded for #{target['scheme']} #{target['configuration']} \n Version #{target["xcode_version"]} (#{target["xcode_build"]})",
-        channel: ENV["SLACK_CHANNEL"],        
-        success: true,
-        username: "iOS CI",
-        payload: {
-        	"Hockey" => hockeylink,
-        	"Testflight" => testflightmessage
-        },
-        default_payloads: [:git_branch, :git_author]        
-      )
-     else 
+        slack(
+          message: "Build succeeded for #{target['scheme']} #{target['configuration']} \n Version #{target["xcode_version"]} (#{target["xcode_build"]})",
+          channel: ENV["SLACK_CHANNEL"],        
+          success: true,
+          username: "iOS CI",
+          payload: {
+        	 "Hockey" => hockeylink,
+        	 "Testflight" => testflightmessage
+          },
+          default_payloads: [:git_branch, :git_author]        
+        )
+      end
+    else 
       UI.message "Error"
       slack(
-        message: "New error message",
+        message: error,
         channel: ENV["SLACK_CHANNEL"],
         success: false,        
         default_payloads: [:git_branch, :git_author]
       )
-      end       
-    end
+    end         
   end 
 
   # ---------------------------------------
