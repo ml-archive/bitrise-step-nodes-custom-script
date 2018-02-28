@@ -117,7 +117,8 @@ platform :ios do
   lane :notify_slack do |options| 
     ENV["SLACK_URL"] = DEFAULT_SLACK_WEBHOOK
 
-    error = File.read('../error_message')
+
+    error = File.read('../error_message') if File.file?('../error_message')
 
     unless error
       UI.message "Success!"
