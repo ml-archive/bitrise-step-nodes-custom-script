@@ -23,8 +23,10 @@ DEFAULT_USERNAME="ci@nodes.dk"
 DEFAULT_MATCH_REPO="git@github.com:nodes-projects/internal-certificates-ios.git"
 DEFAULT_ENTERPRISE_BRANCH="nodes-enterprise"
 DEFAULT_ENTERPRISE_TEAM="HW27H6H98R"
+DEFAULT_SLACK_WEBHOOK="https://hooks.slack.com/services/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"
 
 $deploy_config = Array.new
+$notify_config = Array.new
 
 platform :ios do
 
@@ -41,50 +43,54 @@ platform :ios do
 
     if lane == :build
      save_deploy_info
-
     end
   end
 
   error do |lane, exception|
-
+    # Send error notification
+    addErrorMessage("Build failed in lane: #{lane} with message: \n #{exception}")
   end
 
   # ---------------------------------------
   # LANES
   # ---------------------------------------
 
-  lane :build do |options|
+  lane :build do |options| 
     build_config = JSON.parse ENV['BUILD_CONFIG']
-    UI.message "Parsed config: #{pp build_config}"
-
+    UI.message "Parsed config: #{pp build_config}" 
     build_config.each_pair do |key, target|
       build(target)
-    end
+    end  
+    save_notify_info
   end
 
   lane :deploy_hockey do |options|    
     
     if ENV['HOCKEY_UPLOAD_FLAG'] == '1' || ENV['TESTFLIGHT_UPLOAD_FLAG'] == '1'
+      
+      $notify_config.clear
       file = File.read('deploy_config.json')
-      $deploy_config = JSON.parse file
-     
-      # This is messy because we need to mutate the deploy_config by adding the new
-      # hockey URL and I dont know how to do that in Ruby
-      old_deploy_config = $deploy_config.clone
-      $deploy_config.clear  
-      old_deploy_config.each do |target|
+      $deploy_config = JSON.parse file     
+  
+      $deploy_config.each do |target|
         UI.message "Starting hockey upload target #{target}"
-        hockey(api_token: ENV['HOCKEY_API_TOKEN'],
-        ipa: target['hockey_ipa'],
-        dsym: target['dsym'],
-        notes: target['changelog'],
-        notify: "0",
-        status: "2")
-      info = lane_context[Actions::SharedValues::HOCKEY_BUILD_INFORMATION]    
-      target['hockey_link'] = info['config_url']
-      $deploy_config << target
+        hockey(
+          api_token: ENV['HOCKEY_API_TOKEN'],
+          ipa: target['hockey_ipa'],
+          dsym: target['dsym'],
+          notes: target['changelog'],
+          notify: "0"   
+        )
+        info = lane_context[Actions::SharedValues::HOCKEY_BUILD_INFORMATION]       
+        $notify_config << {
+          'scheme' => target['scheme'],
+          'configuration' => target['configuration'],
+          'xcode_version' => target['xcode_version'],
+          'xcode_build' => target['xcode_build'],
+          'hockey_link' => info['config_url']
+        }
       end     
-      save_deploy_info
+      save_notify_info
     else 
       UI.important "Skipping hockey upload due to project.yml settings."
     end
@@ -109,8 +115,48 @@ platform :ios do
   end
 
   lane :notify_slack do |options| 
-    UI.message "Hello world"
+    ENV["SLACK_URL"] = DEFAULT_SLACK_WEBHOOK
 
+
+    error = File.read('../error_message') if File.file?('../error_message')
+
+    unless error
+      UI.message "Success!"
+      config = JSON.parse ENV["NOTIFY_CONFIG"]
+      # Debug data
+      #config = JSON.parse '[{"scheme":"FirstTarget","configuration":"Test (Live)","xcode_version":"1.0","xcode_build":"125","hockey_link":"https://rink.hockeyapp.net/manage/apps/562313/app_versions/88"}]'
+   
+      config.each do |target|          
+        hockeylink = target['hockey_link'] || "Hockey build disabled"   
+        if ENV['TESTFLIGHT_UPLOAD_FLAG'] == '1'
+          testflightmessage = "New build processing on Testflight"
+        else 
+          testflightmessage = "Testflight build disabled"
+        end
+
+        slack(
+          message: "Build succeeded for #{target['scheme']} #{target['configuration']} \n Version #{target["xcode_version"]} (#{target["xcode_build"]})",
+          channel: ENV["SLACK_CHANNEL"],        
+          success: true,
+          username: "iOS CI",
+          payload: {
+        	 "Hockey" => hockeylink,
+        	 "Testflight" => testflightmessage
+          },
+          default_payloads: [:git_branch, :git_author]        
+        )
+      end
+    else 
+      UI.message "Error"
+      slack(
+        message: error,
+        channel: ENV["SLACK_CHANNEL"],
+        success: false,        
+        username: "iOS CI",
+        default_payloads: [:git_branch, :git_author]
+      )
+      File.delete('../error_message')
+    end         
   end 
 
   # ---------------------------------------
@@ -139,8 +185,7 @@ platform :ios do
       type: export_method_match,
       app_identifier: bundle_id,       
       readonly: true
-    )
-    
+    )    
    
     path_env_var = "sigh_#{bundle_id}_#{export_method_match}_profile-path"
     team_env_var = "sigh_#{bundle_id}_#{export_method_match}_team-id"    
@@ -234,13 +279,21 @@ platform :ios do
       'dsym' => ipa_path.sub('.ipa', '.app.dSYM.zip'),
       'hockey_app_id' => options['hockey-app-id'],
       'changelog' => ENV['COMMIT_CHANGELOG'],
-      'team_name' => team_name,
+      'team_name' => get_team_name(provisioning_profile_path),
       'itc_provider' => options["itc_provider"],
+      'scheme' => options['scheme'],
+      'configuration' => options['configuration'],
+      'xcode_version' => options['xcode_version'],
+      'xcode_build' => options['xcode_build']      
+    }
+
+    $notify_config << {  
       'scheme' => options['scheme'],
       'configuration' => options['configuration'],
       'xcode_version' => options['xcode_version'],
       'xcode_build' => options['xcode_build']
     }
+
     UI.success "Successfully built everything."
   end
 
@@ -261,6 +314,13 @@ platform :ios do
       puts $deploy_config
       system "bitrise envman add --key DEPLOY_CONFIG --value '#{$deploy_config.to_json}' --no-expand"
   end 
+  def save_notify_info() 
+    system "bitrise envman add --key NOTIFY_CONFIG --value '#{$notify_config.to_json}' --no-expand"
+  end
+
+  def addErrorMessage(message)  
+    File.open('../error_message', 'w') { |file| file.write(message) }
+  end
 
 end
 

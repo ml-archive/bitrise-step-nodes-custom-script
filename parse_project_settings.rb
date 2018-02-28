@@ -46,13 +46,22 @@ class Version < Array
   end
 end
 
+def addErrorMessage(message)  
+  File.open('error_message', 'w') { |file| file.write(message) }
+end
+
 # -------
 # Main
 # -------
 
 # Load YAML
 puts bold "Loading settings from #{PROJECT_FILE_NAME}"
-raise red "|- Couldn't find project.yml file" unless File.exist?(PROJECT_FILE_NAME)
+unless File.exist?(PROJECT_FILE_NAME)
+  message = "|- Couldn't find project.yml file" 
+  addErrorMessage(message)
+  raise red message
+end
+
 project_settings = YAML.load_file(PROJECT_FILE_NAME)
 
 # Load some settings
@@ -62,7 +71,12 @@ PROJECT_ROOT_DIR = File.dirname(xcodeproj_path) + "/"
 export_method = project_settings['method'] ||= "app-store" 
 
 # Load Xcode project
-raise red "|- Couldn't find Xcode project at: #{xcodeproj_path}" unless File.exist?(xcodeproj_path)
+unless File.exist?(xcodeproj_path)
+  message = "|- Couldn't find Xcode project at: #{xcodeproj_path}" 
+  addErrorMessage(message)
+  raise red message
+end
+
 xcode_project = Xcodeproj::Project.open xcodeproj_path
 
 # Validate configuration
@@ -70,7 +84,11 @@ avialable_configurations = xcode_project.build_configurations.map { |x|
   puts "|- #{x.name}" if VERBOSE
   x.name
 }
-raise red "|- Can't find configuration #{configuration}" unless avialable_configurations.include? configuration
+unless avialable_configurations.include? configuration
+  message = "|- Can't find configuration #{configuration}"
+  addErrorMessage(message)
+  raise red message
+end
 
 # Notify
 puts green "|- Settings loaded succesfully with configuration: #{project_settings["configuration"]}."
@@ -126,8 +144,10 @@ project_settings["targets"].each_pair { |key, val|
 
 
 # Make sure we have something to build
-unless validated_targets.count > 0
-  raise red "|- No valid targets to build, build failed."
+unless validated_targets.count > 0 
+  message = "|- No valid targets to build, build failed."
+  addErrorMessage(message)
+  raise red message
 end
 
 # Temp fix for riide, will make this more reusable in the future. This breaks down the
@@ -147,6 +167,7 @@ valid = true
 
 unless DEBUG_MODE
   # Get version and build numbers
+  message = ""
   validated_targets.each_pair { |key, val|
 
     # Find the correct configuration
@@ -178,13 +199,20 @@ unless DEBUG_MODE
     # Compare, make sure that build is always higher and version is at least higher or equal
     unless (Version.new(xcode_version) >= Version.new(hockey_version)) && (xcode_build > hockey_build)
       valid = false
-      puts yellow """|- #{key}: Xcode version #{xcode_version} (#{xcode_build}) is lower or equal than the one on Hockey #{hockey_version} (#{hockey_build})."""
+      warning_message = """#{key}: Xcode version #{xcode_version} (#{xcode_build}) is lower or equal than the one on Hockey #{hockey_version} (#{hockey_build})."""
+      message +="#{warning_message} \n"
+      puts yellow "|- #{warning_message}"
     end
   }
 end
 
 # Check if we can continue
-raise red "Can't continue with build, as version and build numbers must be higher than the ones on Hockey." unless valid
+unless valid
+  message += "Can't continue with build, as version and build numbers must be higher than the ones on Hockey." 
+  addErrorMessage(message)
+  raise red message
+end
+
 
 # All done
 puts green "|- All version and build numbers are correct."
