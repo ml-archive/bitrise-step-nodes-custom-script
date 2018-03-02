@@ -194,7 +194,8 @@ platform :ios do
 
     UI.message "Switching to manual code signing"
     targets_to_change = options['scheme']
-    targets_to_change += "|" + options['additional-schemes'] if options.key?('additional-schemes')
+    #targets_to_change += "|" + options['additional-schemes'] if options.key?('additional-schemes')
+    targets_to_change += "|NewsWidget"
     disable_automatic_code_signing(
       path: options['xcodeproj'],
       team_id: team_id
