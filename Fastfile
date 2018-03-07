@@ -58,8 +58,8 @@ platform :ios do
   lane :build do |options| 
     build_config = JSON.parse ENV['BUILD_CONFIG']
     UI.message "Parsed config: #{pp build_config}" 
-    build_config.each_pair do |key, target|
-      build(target)
+    build_config.each_pair do |target, target_config|
+      build(target, target_config)
     end  
     save_notify_info
   end
@@ -163,12 +163,11 @@ platform :ios do
   # CUSTOM
   # ---------------------------------------
 
-  def build(options)
-    UI.message "Building #{options['scheme']} in #{options['configuration']}"
+  def build(target, options)
+    UI.message "Building #{target} with scheme #{options['scheme']} in #{options['configuration']} configuration."
 
     # Testflight
     # ----------
-
 
     bundle_id = options['bundle_id']
     archive_path = "#{Dir.pwd}/../archive.xcarchive"
@@ -195,14 +194,14 @@ platform :ios do
     UI.message "Switching to manual code signing"
     disable_automatic_code_signing(
       path: options['xcodeproj'],
-      targets: options['scheme'],
+      targets: target,
       team_id: team_id
     )     
 
     UI.message "Setting provisioning profile"
     update_project_provisioning(
       xcodeproj: options['xcodeproj'],
-      target_filter: options['scheme'],
+      target_filter: target,
       profile: provisioning_profile_path
     )
 
