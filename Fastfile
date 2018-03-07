@@ -193,18 +193,26 @@ platform :ios do
     team_id = ENV["#{team_env_var}"]
 
     UI.message "Switching to manual code signing"
-    targets_to_change = options['scheme']
-    #targets_to_change += "|" + options['additional-schemes'] if options.key?('additional-schemes')
-    targets_to_change += "|NewsWidget"
+    disabled_targets = [options['scheme']]
+    provisioning_target_filter = options['scheme']
+
+    if options.key?('additional-schemes')
+      additional_array = options['additional-schemes'].split(",").map!{|item| item.strip}
+      disabled_targets += additional_array
+      UI.message "disabled_targets is now: #{disabled_targets}"
+      provisioning_target_filter += "|" + additional_array.join("|")
+    end
+#    targets_to_change += "|NewsWidget|watch Extension|NotificationExtension|ArticleContentExtension|GroupedArticlesContentExtension|watch"
     disable_automatic_code_signing(
       path: options['xcodeproj'],
+      targets: disabled_targets,
       team_id: team_id
     )
 
     UI.message "Setting provisioning profile"
     update_project_provisioning(
       xcodeproj: options['xcodeproj'],
-      target_filter: targets_to_change,
+      target_filter: provisioning_target_filter,
       profile: provisioning_profile_path
     )
 
