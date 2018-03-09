@@ -102,12 +102,22 @@ platform :ios do
       $deploy_config = JSON.parse file
       UI.message "Deploy config: #{pp $deploy_config}"
 
-      $deploy_config.each do |target|            
-        pilot(ipa: target['testflight_ipa'],
-        username: DEFAULT_USERNAME,
-        team_name: target['team_name'],
-        skip_waiting_for_build_processing: true,
-        itc_provider: target['itc_provider'])     
+      $deploy_config.each do |target| 
+        # This checks for team_id and uses that if available
+        team_name = target['team_name']
+        team_id = target['team_id']
+        unless team_id.nil?
+          team_name = nil
+        end
+        team_name =
+        pilot(
+          ipa: target['testflight_ipa'],
+          username: DEFAULT_USERNAME,
+          team_id: team_id,
+          team_name: team_name,
+          skip_waiting_for_build_processing: true,
+          itc_provider: target['itc_provider']
+        )     
       end      
     else 
       UI.important "Skipping testflight upload due to project.yml settings"
@@ -279,6 +289,7 @@ platform :ios do
       'hockey_app_id' => options['hockey-app-id'],
       'changelog' => ENV['COMMIT_CHANGELOG'],
       'team_name' => get_team_name(provisioning_profile_path),
+      'team_id' => options["team_id"],
       'itc_provider' => options["itc_provider"],
       'scheme' => options['scheme'],
       'configuration' => options['configuration'],
