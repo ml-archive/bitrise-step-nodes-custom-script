@@ -112,7 +112,7 @@ platform :ios do
         team_name =
         pilot(
           ipa: target['testflight_ipa'],
-          username: DEFAULT_USERNAME,
+          username: target['upload_account'] || DEFAULT_USERNAME,
           team_id: team_id,
           team_name: team_name,
           skip_waiting_for_build_processing: true,
@@ -294,7 +294,8 @@ platform :ios do
       'scheme' => options['scheme'],
       'configuration' => options['configuration'],
       'xcode_version' => options['xcode_version'],
-      'xcode_build' => options['xcode_build']      
+      'xcode_build' => options['xcode_build'],
+      'upload_account' => options['testflight-upload-account']      
     }
 
     $notify_config << {  
