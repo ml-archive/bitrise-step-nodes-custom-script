@@ -161,7 +161,7 @@ platform :ios do
       UI.message "Error"
       slack(
         message: error,
-        channel: ENV["SLACK_CHANNEL"],
+        channel: "ios-ci",
         success: false,        
         username: "iOS CI",
         default_payloads: [:git_branch, :git_author]
