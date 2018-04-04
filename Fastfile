@@ -58,8 +58,8 @@ platform :ios do
   lane :build do |options| 
     build_config = JSON.parse ENV['BUILD_CONFIG']
     UI.message "Parsed config: #{pp build_config}" 
-    build_config.each_pair do |key, target|
-      build(target)
+    build_config.each_pair do |target, target_config|
+      build(target, target_config)
     end  
     save_notify_info
   end
@@ -79,7 +79,8 @@ platform :ios do
           ipa: target['hockey_ipa'],
           dsym: target['dsym'],
           notes: target['changelog'],
-          notify: "0"   
+          notify: "0",
+          public_identifier: target['hockey_app_id']   
         )
         info = lane_context[Actions::SharedValues::HOCKEY_BUILD_INFORMATION]       
         $notify_config << {
@@ -102,12 +103,22 @@ platform :ios do
       $deploy_config = JSON.parse file
       UI.message "Deploy config: #{pp $deploy_config}"
 
-      $deploy_config.each do |target|            
-        pilot(ipa: target['testflight_ipa'],
-        username: DEFAULT_USERNAME,
-        team_name: target['team_name'],
-        skip_waiting_for_build_processing: true,
-        itc_provider: target['itc_provider'])     
+      $deploy_config.each do |target| 
+        # This checks for team_id and uses that if available
+        team_name = target['team_name']
+        team_id = target['team_id']
+        unless team_id.nil?
+          team_name = nil
+        end
+        team_name =
+        pilot(
+          ipa: target['testflight_ipa'],
+          username: target['upload_account'] || DEFAULT_USERNAME,
+          team_id: team_id,
+          team_name: team_name,
+          skip_waiting_for_build_processing: true,
+          itc_provider: target['itc_provider']
+        )     
       end      
     else 
       UI.important "Skipping testflight upload due to project.yml settings"
@@ -150,7 +161,7 @@ platform :ios do
       UI.message "Error"
       slack(
         message: error,
-        channel: ENV["SLACK_CHANNEL"],
+        channel: "ios-ci",
         success: false,        
         username: "iOS CI",
         default_payloads: [:git_branch, :git_author]
@@ -163,12 +174,11 @@ platform :ios do
   # CUSTOM
   # ---------------------------------------
 
-  def build(options)
-    UI.message "Building #{options['scheme']} in #{options['configuration']}"
+  def build(target, options)
+    UI.message "Building #{target} with scheme #{options['scheme']} in #{options['configuration']} configuration."
 
     # Testflight
     # ----------
-
 
     bundle_id = options['bundle_id']
     archive_path = "#{Dir.pwd}/../archive.xcarchive"
@@ -195,14 +205,14 @@ platform :ios do
     UI.message "Switching to manual code signing"
     disable_automatic_code_signing(
       path: options['xcodeproj'],
-      targets: options['scheme'],
+      targets: target,
       team_id: team_id
     )     
 
     UI.message "Setting provisioning profile"
     update_project_provisioning(
       xcodeproj: options['xcodeproj'],
-      target_filter: options['scheme'],
+      target_filter: target,
       profile: provisioning_profile_path
     )
 
@@ -280,11 +290,13 @@ platform :ios do
       'hockey_app_id' => options['hockey-app-id'],
       'changelog' => ENV['COMMIT_CHANGELOG'],
       'team_name' => get_team_name(provisioning_profile_path),
+      'team_id' => options["team_id"],
       'itc_provider' => options["itc_provider"],
       'scheme' => options['scheme'],
       'configuration' => options['configuration'],
       'xcode_version' => options['xcode_version'],
-      'xcode_build' => options['xcode_build']      
+      'xcode_build' => options['xcode_build'],
+      'upload_account' => options['testflight-upload-account']      
     }
 
     $notify_config << {  
