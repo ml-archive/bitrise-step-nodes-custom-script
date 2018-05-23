@@ -186,8 +186,16 @@ unless DEBUG_MODE
 
     # Get numbers from hockey
     hockey_app_id = val["settings"]["hockey-app-id"]
+
+    # Check if hockey id is filled in correctly
+    if hockey_app_id.nil? || hockey_app_id.empty? then
+      raise red """|- HockeyApp app id is missing, can't continue with build as version and build number can't be verified. 
+      All apps should have an associated HockeyApp app."""
+    end
+
     buildnumber = HockeyVer.parse_hockey_version hockey_app_id, ENV["HOCKEY_API_TOKEN"]
-    puts "Build Number:#{buildnumber}"
+
+    # Check if build number from hockey is nil
     if buildnumber.nil? 
       puts yellow "|- No build found on Hockey, proceeding with build"
       next
