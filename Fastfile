@@ -197,6 +197,20 @@ platform :ios do
       readonly: true
     )    
    
+    # Install certificates and profiles for extensions
+    extensions_ids = options["extensions_bundle_ids"] ||= Array.new
+    unless extensions_ids.empty?
+      extensions_ids.each do |extension_id|
+        match(
+          git_url: DEFAULT_MATCH_REPO,
+          git_branch: match_branch,
+          type: export_method_match,
+          app_identifier: extension_id,       
+          readonly: true
+        )   
+      end
+    end
+
     path_env_var = "sigh_#{bundle_id}_#{export_method_match}_profile-path"
     team_env_var = "sigh_#{bundle_id}_#{export_method_match}_team-id"    
     provisioning_profile_path = ENV["#{path_env_var}"]
