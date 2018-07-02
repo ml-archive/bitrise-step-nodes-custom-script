@@ -234,7 +234,7 @@ validated_targets.each_pair { |key, val|
  
   # Get extensions from content and remove them (will re-added if validated)
   extensions_bundle_ids = content['extensions-bundle-ids'] ||= Array.new
-  content['extensions-bundle-ids'] = Array.new
+  content['extensions-bundle-ids'] = Hash.new
 
   # Validate extensions
   extensions_bundle_ids.each { |extension_id|
@@ -255,8 +255,8 @@ validated_targets.each_pair { |key, val|
       next 
     end
 
-    # Add validated ID to array
-    content['extensions-bundle-ids'] << extension_id    
+    # Add validated ID to extensions hash
+    content['extensions-bundle-ids'][extension_target.name] = extension_id    
   }
 
   # Extract build number 
