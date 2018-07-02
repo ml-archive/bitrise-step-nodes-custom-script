@@ -198,7 +198,7 @@ platform :ios do
     )    
    
     # Install certificates and profiles for extensions
-    extensions_ids = options["extensions_bundle_ids"] ||= Array.new
+    extensions_ids = options["extensions-bundle-ids"] ||= Array.new
     unless extensions_ids.empty?
       extensions_ids.each do |extension_id|
         match(

@@ -233,8 +233,8 @@ validated_targets.each_pair { |key, val|
   content['bundle_id'] = val['target'].build_settings(configuration)['PRODUCT_BUNDLE_IDENTIFIER']
  
   # Get extensions from content and remove them (will re-added if validated)
-  extensions_bundle_ids = content['extensions_bundle_ids'] ||= Array.new
-  content['extensions_bundle_ids'] = Array.new
+  extensions_bundle_ids = content['extensions-bundle-ids'] ||= Array.new
+  content['extensions-bundle-ids'] = Array.new
 
   # Validate extensions
   extensions_bundle_ids.each { |extension_id|
@@ -256,7 +256,7 @@ validated_targets.each_pair { |key, val|
     end
 
     # Add validated ID to array
-    content['extensions_bundle_ids'] << extension_id    
+    content['extensions-bundle-ids'] << extension_id    
   }
 
   # Extract build number 
