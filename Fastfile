@@ -196,7 +196,7 @@ platform :ios do
       app_identifier: bundle_id,       
       readonly: true
     )    
-   
+
     path_env_var = "sigh_#{bundle_id}_#{export_method_match}_profile-path"
     team_env_var = "sigh_#{bundle_id}_#{export_method_match}_team-id"    
     provisioning_profile_path = ENV["#{path_env_var}"]
@@ -215,6 +215,41 @@ platform :ios do
       target_filter: target,
       profile: provisioning_profile_path
     )
+
+
+    # Install certificates and profiles for extensions
+    extensions_ids = options["extensions-bundle-ids"] ||= Hash.new
+    unless extensions_ids.empty?
+      extensions_ids.each_pair do |ext_target, ext_id|
+        UI.message "Installing certificate and profiles for extension: #{ext_id}"
+        match(
+          git_url: DEFAULT_MATCH_REPO,
+          git_branch: match_branch,
+          type: export_method_match,
+          app_identifier: ext_id,       
+          readonly: true
+        )   
+
+        ext_path_env_var = "sigh_#{ext_id}_#{export_method_match}_profile-path"
+        ext_team_env_var = "sigh_#{ext_id}_#{export_method_match}_team-id"    
+        ext_provisioning_profile_path = ENV["#{ext_path_env_var}"]
+        ext_team_id = ENV["#{ext_team_env_var}"] 
+
+        UI.message "Switching to manual code signing for extension: #{ext_id}"
+        disable_automatic_code_signing(
+          path: options['xcodeproj'],
+          targets: ext_target,
+          team_id: ext_team_id
+        )     
+
+        UI.message "Setting provisioning profile for extension: #{ext_id}"
+        update_project_provisioning(
+          xcodeproj: options['xcodeproj'],
+          target_filter: ext_target,
+          profile: ext_provisioning_profile_path
+        )
+      end
+    end
 
     # Build    
     UI.message "Creating Testflight build"    

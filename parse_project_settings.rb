@@ -246,6 +246,34 @@ validated_targets.each_pair { |key, val|
   bitcode_enabled = configs[index].build_settings['ENABLE_BITCODE'] 
   content['bitcode_enabled'] = bitcode_enabled == "YES"
 
+ 
+  # Get extensions from content and remove them (will re-added if validated)
+  extensions_bundle_ids = content['extensions-bundle-ids'] ||= Array.new
+  content['extensions-bundle-ids'] = Hash.new
+
+  # Validate extensions
+  extensions_bundle_ids.each { |extension_id|
+    # Fetch extension target
+    extension_target = xcode_project.targets.select { |tar| 
+      tar.build_settings(configuration)['PRODUCT_BUNDLE_IDENTIFIER'] == extension_id 
+    }.first
+
+    # If we didn't find extesion, skip to next one
+    if extension_target.nil? 
+      puts yellow "Skipping extension with bundle id #{extension_id} as a target with this id does not exist."
+      next
+    end
+
+    # Bail if not an extension type
+    unless extension_target.extension_target_type?
+      puts yellow "Skipping extension with bundle id #{extension_id} as this target is not an extension target."
+      next 
+    end
+
+    # Add validated ID to extensions hash
+    content['extensions-bundle-ids'][extension_target.name] = extension_id    
+  }
+
   # Extract build number 
   info_plist = val['target'].build_settings(configuration)["INFOPLIST_FILE"]
   info_plist_path = PROJECT_ROOT_DIR + info_plist
