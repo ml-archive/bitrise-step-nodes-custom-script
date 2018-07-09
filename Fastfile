@@ -275,22 +275,19 @@ platform :ios do
     )       
     UI.message "Generated IPA at: #{ipa_path}"
 
-    if options['bitcode_enabled']
-      UI.message "Re-exporting archive without bitcode"    
-      second_path = gym(
-        workspace: workspace,
-        project: project,
-        scheme: options['scheme'],
-        output_name: "#{options['scheme']}-hockey", 
-        configuration: options['configuration'],
-        include_bitcode: false,
-        skip_build_archive: true,
-        archive_path: archive_path
-      ) 
-      UI.message "Generated non-bitcode IPA at: #{second_path}"
-    else 
-      second_path = ipa_path
-    end 
+    UI.message "Re-exporting archive without bitcode"    
+    second_path = gym(
+      workspace: workspace,
+      project: project,
+      scheme: options['scheme'],
+      output_name: "#{options['scheme']}-hockey", 
+      configuration: options['configuration'],
+      include_bitcode: false,
+      skip_build_archive: true,
+      archive_path: archive_path
+    ) 
+    UI.message "Generated non-bitcode IPA at: #{second_path}"
+
 
     # Hockey
     # ----------

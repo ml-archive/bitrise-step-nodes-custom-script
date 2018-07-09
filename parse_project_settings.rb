@@ -239,13 +239,6 @@ validated_targets.each_pair { |key, val|
   content['platform'] = val['target'].platform_name
   content['configuration'] = configuration
   content['bundle_id'] = val['target'].build_settings(configuration)['PRODUCT_BUNDLE_IDENTIFIER']
-
-  # Check bitcode 
-  configs = val["target"].build_configurations
-  index = configs.index { |x| x.name == configuration }
-  bitcode_enabled = configs[index].build_settings['ENABLE_BITCODE'] 
-  content['bitcode_enabled'] = bitcode_enabled == "YES"
-
  
   # Get extensions from content and remove them (will re-added if validated)
   extensions_bundle_ids = content['extensions-bundle-ids'] ||= Array.new
