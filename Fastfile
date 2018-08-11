@@ -260,7 +260,7 @@ platform :ios do
     unless workspace.nil? 
       project = nil
       UI.message "Installing Cocoapods"    
-      cocoapods # I mean this is why you're using a workspace, right?
+      cocoapods(repo_update: true) # I mean this is why you're using a workspace, right?
     end
 
     ipa_path = gym(
