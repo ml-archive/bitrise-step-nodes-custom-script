@@ -166,7 +166,7 @@ platform :ios do
         payload: {
           "Project" => ENV["BITRISEIO_GIT_REPOSITORY_SLUG"],
           "Build" => ENV["BITRISE_BUILD_URL"]
-        }
+        },
         default_payloads: [:git_branch, :git_author]
       )
       File.delete('../error_message')
