@@ -146,8 +146,7 @@ platform :ios do
 
         slack(
           message: "Build succeeded for #{target['scheme']} #{target['configuration']} \n Version #{target["xcode_version"]} (#{target["xcode_build"]})",
-          channel: ENV["SLACK_CHANNEL"],      
-          use_webhook_configured_username_and_icon: true,  
+          channel: ENV["SLACK_CHANNEL"],   
           success: true,
           username: "iOS CI",
           payload: {
@@ -162,7 +161,6 @@ platform :ios do
       slack(
         message: error,
         channel: "ios-ci",
-        use_webhook_configured_username_and_icon: true,
         success: false,        
         username: "iOS CI",
         default_payloads: [:git_branch, :git_author]
