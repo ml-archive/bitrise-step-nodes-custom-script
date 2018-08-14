@@ -23,7 +23,6 @@ DEFAULT_USERNAME="ci@nodes.dk"
 DEFAULT_MATCH_REPO="git@github.com:nodes-projects/internal-certificates-ios.git"
 DEFAULT_ENTERPRISE_BRANCH="nodes-enterprise"
 DEFAULT_ENTERPRISE_TEAM="HW27H6H98R"
-DEFAULT_SLACK_WEBHOOK="https://hooks.slack.com/services/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"
 
 $deploy_config = Array.new
 $notify_config = Array.new
@@ -126,7 +125,7 @@ platform :ios do
   end
 
   lane :notify_slack do |options| 
-    ENV["SLACK_URL"] = DEFAULT_SLACK_WEBHOOK
+
 
 
     error = File.read('../error_message') if File.file?('../error_message')
@@ -147,7 +146,8 @@ platform :ios do
 
         slack(
           message: "Build succeeded for #{target['scheme']} #{target['configuration']} \n Version #{target["xcode_version"]} (#{target["xcode_build"]})",
-          channel: ENV["SLACK_CHANNEL"],        
+          channel: ENV["SLACK_CHANNEL"],      
+          use_webhook_configured_username_and_icon: true,  
           success: true,
           username: "iOS CI",
           payload: {
@@ -162,6 +162,7 @@ platform :ios do
       slack(
         message: error,
         channel: "ios-ci",
+        use_webhook_configured_username_and_icon: true,
         success: false,        
         username: "iOS CI",
         default_payloads: [:git_branch, :git_author]
