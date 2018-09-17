@@ -69,6 +69,7 @@ xcodeproj_path = project_settings['xcodeproj']
 configuration = project_settings["configuration"]
 PROJECT_ROOT_DIR = File.dirname(xcodeproj_path) + "/"
 export_method = project_settings['method'] ||= "app-store" 
+ci_version = project_settings['ci-version']
 
 # Load Xcode project
 unless File.exist?(xcodeproj_path)
@@ -285,5 +286,6 @@ system "bitrise envman add --key EXPORT_METHOD --value #{export_method} --no-exp
 system "bitrise envman add --key HOCKEY_UPLOAD_FLAG --value '#{hockey_upload}' --no-expand" unless DEBUG_MODE
 system "bitrise envman add --key TESTFLIGHT_UPLOAD_FLAG --value '#{testflight_upload}' --no-expand" unless DEBUG_MODE
 system "bitrise envman add --key SLACK_CHANNEL --value '#{project_settings['slack-channel']}' --no-expand " unless DEBUG_MODE
+system "bitrise envman add --key CI_VERSION --value '#{ci_version}' --no-expand " unless DEBUG_MODE
 puts green "|- Succesfully generated build config."
 pp build_config unless not VERBOSE
