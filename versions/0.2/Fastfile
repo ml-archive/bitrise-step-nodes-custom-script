@@ -76,7 +76,7 @@ platform :ios do
         hockey(
           api_token: ENV['HOCKEY_API_TOKEN'],
           ipa: target['hockey_ipa'],
-          dsym: target['dsym'],
+          dsym: target['hockey_dsym'],
           notes: target['changelog'],
           notify: "0",
           public_identifier: target['hockey_app_id']   
@@ -109,7 +109,7 @@ platform :ios do
         unless team_id.nil?
           team_name = nil
         end
-        team_name =
+
         pilot(
           ipa: target['testflight_ipa'],
           username: target['upload_account'] || DEFAULT_USERNAME,
@@ -368,6 +368,7 @@ platform :ios do
       'testflight_ipa' => testflight_ipa,
       'hockey_ipa' => hockey_ipa,
       'dsym' => (testflight_ipa ||= "").sub('.ipa', '.app.dSYM.zip'),
+      'hockey_dsym' => (hockey_ipa ||= "").sub('.ipa', '.app.dSYM.zip'),
       'hockey_app_id' => options['hockey-app-id'],
       'changelog' => ENV['COMMIT_CHANGELOG'],
       'team_name' => team_name,
