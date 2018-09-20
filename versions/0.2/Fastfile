@@ -324,6 +324,7 @@ platform :ios do
       include_bitcode: false,
       xcargs: "CODE_SIGN_ENTITLEMENTS=''",
       archive_path: archive_path,
+      skip_build_archive: File.exist?(archive_path),
       export_method: "enterprise",
     ) 
 
