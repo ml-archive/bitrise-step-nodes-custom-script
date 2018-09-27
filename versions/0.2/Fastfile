@@ -306,36 +306,14 @@ platform :ios do
       readonly: true
     )
 
-    # Find the app inside xcarchive
-    archive_app = nil
-    if File.exist?(archive_path)
-      archive_app_dir = archive_path + "/Products/Applications/*.app"
-      archive_app_dir_apps = Dir.glob(archive_app_dir)
-      archive_app = archive_app_dir_apps.first unless archive_app_dir_apps.nil?
-      should_reuse = archive_app.nil? == false
-    else 
-      should_reuse = false
-    end
-
-    # If re-using testflight archive, remove entitlements and resign
-    if should_reuse
-      UI.message "Re-signing existing archive"
-      resign(
-        ipa: archive_app,
-        signing_identity: "iPhone Distribution: Nodes Aps",
-        provisioning_profile: ENV['sigh_*_enterprise_profile-path'],
-        use_app_entitlements: false,
-        verbose: true
-      )
-    else 
-      UI.message "Setting provisioning profile"
-      update_project_provisioning(
-        xcodeproj: options['xcodeproj'],
-        target_filter: target,
-        profile: ENV['sigh_*_enterprise_profile-path'],
-        code_signing_identity: "iPhone Distribution: Nodes Aps"
-      )
-    end
+    
+    UI.message "Setting provisioning profile"
+    update_project_provisioning(
+      xcodeproj: options['xcodeproj'],
+      target_filter: target,
+      profile: ENV['sigh_*_enterprise_profile-path'],
+      code_signing_identity: "iPhone Distribution: Nodes Aps"
+    )
 
     UI.message "Creating Hockey build without bitcode and entitlements"
     ipa_path = gym(
@@ -347,7 +325,7 @@ platform :ios do
       include_bitcode: false,
       xcargs: "CODE_SIGN_ENTITLEMENTS=''",
       archive_path: archive_path,
-      skip_build_archive: should_reuse,
+      skip_build_archive: false, # TODO: this should be improved in the future to re-use testflight builds, but entitlements need to be stripped
       export_method: "enterprise",
       export_team_id: DEFAULT_ENTERPRISE_TEAM,
       export_xcargs: "CODE_SIGN_ENTITLEMENTS=''"
