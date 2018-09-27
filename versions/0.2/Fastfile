@@ -326,6 +326,7 @@ platform :ios do
       archive_path: archive_path,
       skip_build_archive: File.exist?(archive_path),
       export_method: "enterprise",
+      export_team_id: DEFAULT_ENTERPRISE_TEAM
     ) 
 
     UI.message "Generated Hockey IPA at: #{ipa_path}"   
