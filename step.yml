@@ -13,9 +13,9 @@ summary: |
   Runs a custom script hosted at our private github
 description: |
   Runs a custom script hosted at our private github
-website: https://github.com/nodes-projects/bitrise-step-nodes-custom-script
-source_code_url: https://github.com/nodes-projects/bitrise-step-nodes-custom-script
-support_url: https://github.com/nodes-projects/bitrise-step-nodes-custom-script/issues
+website: https://github.com/nodes-ios/bitrise-step-nodes-custom-script
+source_code_url: https://github.com/nodes-ios/bitrise-step-nodes-custom-script
+support_url: https://github.com/nodes-ios/bitrise-step-nodes-custom-script/issues
 host_os_tags:
   - osx-10.10
   - ubuntu-16.04
