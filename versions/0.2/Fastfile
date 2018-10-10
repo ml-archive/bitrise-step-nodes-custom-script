@@ -276,18 +276,10 @@ platform :ios do
   def buildHockey(target, options, workspace, project) 
     UI.message "Starting Hockey build"
 
-    bundle_id = options['bundle_id']
     archive_path = "#{Dir.pwd}/../archive.xcarchive"
-    export_method = ENV['EXPORT_METHOD'] 
-    export_method_match = export_method.gsub('-', '')
 
     # Certificates and profiles
     UI.message "Installing certificate and profiles for Hockey"
-
-    path_env_var = "sigh_#{bundle_id}_#{export_method_match}_profile-path"
-    team_env_var = "sigh_#{bundle_id}_#{export_method_match}_team-id"    
-    provisioning_profile_path = ENV["#{path_env_var}"]
-    team_id = ENV["#{team_env_var}"] 
 
     UI.message "Switching to manual code signing"
     disable_automatic_code_signing(
@@ -342,30 +334,44 @@ platform :ios do
     # Fastlane wont let you pass both a workspace and project
     workspace = options['workspace']
     project = options['xcodeproj']
+    
     unless workspace.nil? 
       project = nil
       UI.message "Installing Cocoapods"    
       cocoapods(repo_update: true)
     end
 
+    testflight_upload_enabled = ENV['TESTFLIGHT_UPLOAD_FLAG'] == '1'
+    hockey_upload_enabled = ENV['HOCKEY_UPLOAD_FLAG'] == '1'
+
     # Testflight
     # ----------
 
-    if ENV['TESTFLIGHT_UPLOAD_FLAG'] == '1' 
+    if testflight_upload_enabled
       testflight_ipa = buildAppStore(target, options, workspace, project)
     end
 
     # Hockey
     # ----------
 
-    if ENV['HOCKEY_UPLOAD_FLAG'] == '1' || ENV['TESTFLIGHT_UPLOAD_FLAG'] == '1' 
+    if hockey_upload_enabled || testflight_upload_enabled 
         hockey_ipa = buildHockey(target, options, workspace, project)
     end
 
     # If for some reason the get_team_name doesnt work, you can manually specify it
     team_name = options["team_name"]
     if team_name.nil?
-      team_name = get_team_name(provisioning_profile_path)
+      if testflight_upload_enabled
+        bundle_id = options['bundle_id']
+        export_method = ENV['EXPORT_METHOD'] 
+        export_method_match = export_method.gsub('-', '')    
+        path_env_var = "sigh_#{bundle_id}_#{export_method_match}_profile-path"
+        team_env_var = "sigh_#{bundle_id}_#{export_method_match}_team-id"
+        provisioning_profile_path = ENV["#{path_env_var}"]
+        team_name = get_team_name(provisioning_profile_path)
+      else
+        team_name = DEFAULT_ENTERPRISE_TEAM
+      end
     end
 
     $deploy_config << {
