@@ -174,7 +174,8 @@ platform :ios do
   # ---------------------------------------
 
   def buildAppStore(target, options, workspace, project)
-    UI.message "Starting TestFlight build"
+
+    UI.header "Starting TestFlight build"
 
     bundle_id = options['bundle_id']
     archive_path = "#{Dir.pwd}/../archive.xcarchive"
@@ -268,18 +269,19 @@ platform :ios do
       export_team_id: team_id,
       codesigning_identity: "iPhone Distribution"
     )
-    UI.message "Generated TestFlight IPA at: #{ipa_path}"
+    UI.success "Generated TestFlight IPA at: #{ipa_path}"
 
     return ipa_path
   end
 
   def buildHockey(target, options, workspace, project)
-    UI.message "Starting Hockey build"
+    UI.header "Starting Hockey build"
 
     archive_path = "#{Dir.pwd}/../archive.xcarchive"
 
     # Already built for Testflight, so we just need to re-export it and not build
     if File.exist?(archive_path)
+      UI.message "Testflight archive already created, skipping hockey build and re-exporting instead"
       return resignAndExport(target, options, workspace, project, archive_path)
     end
 
@@ -326,13 +328,14 @@ platform :ios do
       export_xcargs: "CODE_SIGN_ENTITLEMENTS=''"
     )
 
-    UI.message "Generated Hockey IPA at: #{ipa_path}"
+    UI.success "Generated Hockey IPA at: #{ipa_path}"
 
     return ipa_path
   end
 
   def resignAndExport(target, options, workspace, project, archive_path)
-    UI.message "Re-exporting archive without bitcode"
+
+    UI.header "Re-exporting archive without bitcode"
     second_path = gym(
       workspace: workspace,
       project: project,
@@ -368,7 +371,7 @@ platform :ios do
       verbose: true
     )
 
-    UI.message "Hockey IPA at: #{second_path}"
+    UI.success "Hockey IPA at: #{second_path}"
     return second_path
   end
 
