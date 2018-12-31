@@ -23,6 +23,8 @@ if [ "${script_input}" == 'Fastlane copy' ]; then
 		echo "No fastfile found in ci tools version folder ${CI_VERSION}."
 		exit 1
 	fi
+    # Install badge plugin
+    fastlane install_plugins
 
 elif [ "${script_input}" == 'Prep Slack message' ]; then
 	ruby "${THIS_SCRIPT_DIR}/prepare_slack.rb"
