@@ -2,8 +2,9 @@
 set -ex
 
 THIS_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-if [ "${script_input}" == 'Fastlane copy' ]; then
 
+copyFastfile()
+{
 	# if directory doesn't exist, create it
 	if [ ! -d "$PWD/fastlane" ]; then
 		mkdir $PWD/fastlane
@@ -23,6 +24,12 @@ if [ "${script_input}" == 'Fastlane copy' ]; then
 		echo "No fastfile found in ci tools version folder ${CI_VERSION}."
 		exit 1
 	fi
+}
+
+
+if [ "${script_input}" == 'Fastlane copy' ]; then
+
+	copyFastfile
 
 	# Check for plugin capabilities
 	if [[ -e "${THIS_SCRIPT_DIR}/versions/${CI_VERSION}/Pluginfile" &&
@@ -36,7 +43,7 @@ if [ "${script_input}" == 'Fastlane copy' ]; then
 	fi
 
 elif [ "${script_input}" == 'Prep Slack message' ]; then
-	ruby "${THIS_SCRIPT_DIR}/prepare_slack.rb"
+	copyFastfile
 else
 	gem install hockeyver
 	ruby "${THIS_SCRIPT_DIR}/parse_project_settings.rb"
