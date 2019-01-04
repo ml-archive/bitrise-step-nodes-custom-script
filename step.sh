@@ -16,20 +16,17 @@ if [ "${script_input}" == 'Fastlane copy' ]; then
 	fi
 
 		# Try to load fastile for the correct CI version
-	if [ -e "${THIS_SCRIPT_DIR}/versions/${CI_VERSION}/Fastfile" ]; then 
+	if [ -e "${THIS_SCRIPT_DIR}/versions/${CI_VERSION}/Fastfile" ]; then
 		cp "${THIS_SCRIPT_DIR}/versions/${CI_VERSION}/Fastfile" $PWD/fastlane
 	else
 		# Ohterwise fail
 		echo "No fastfile found in ci tools version folder ${CI_VERSION}."
 		exit 1
 	fi
-    # Install badge plugin
-    fastlane install_plugins
 
 elif [ "${script_input}" == 'Prep Slack message' ]; then
 	ruby "${THIS_SCRIPT_DIR}/prepare_slack.rb"
-else 
+else
 	gem install hockeyver
 	ruby "${THIS_SCRIPT_DIR}/parse_project_settings.rb"
 fi
-
