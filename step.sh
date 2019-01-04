@@ -32,7 +32,7 @@ if [ "${script_input}" == 'Fastlane copy' ]; then
 		cp "${THIS_SCRIPT_DIR}/versions/${CI_VERSION}/Gemfile" $PWD
 		cp "${THIS_SCRIPT_DIR}/versions/${CI_VERSION}/Gemfile.lock" $PWD
 
-		fastlane install_plugins
+		bundle exec fastlane install_plugins
 	fi
 
 elif [ "${script_input}" == 'Prep Slack message' ]; then
