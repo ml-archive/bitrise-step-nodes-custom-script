@@ -19,9 +19,20 @@ if [ "${script_input}" == 'Fastlane copy' ]; then
 	if [ -e "${THIS_SCRIPT_DIR}/versions/${CI_VERSION}/Fastfile" ]; then
 		cp "${THIS_SCRIPT_DIR}/versions/${CI_VERSION}/Fastfile" $PWD/fastlane
 	else
-		# Ohterwise fail
+		# Otherwise fail
 		echo "No fastfile found in ci tools version folder ${CI_VERSION}."
 		exit 1
+	fi
+
+	# Check for plugin capabilities
+	if [[ -e "${THIS_SCRIPT_DIR}/versions/${CI_VERSION}/Pluginfile" &&
+					"${THIS_SCRIPT_DIR}/versions/${CI_VERSION}/Gemfile" &&
+	 				"${THIS_SCRIPT_DIR}/versions/${CI_VERSION}/Gemfile.lock" ]]; then
+		cp "${THIS_SCRIPT_DIR}/versions/${CI_VERSION}/Pluginfile" $PWD/fastlane
+		cp "${THIS_SCRIPT_DIR}/versions/${CI_VERSION}/Gemfile" $PWD
+		cp "${THIS_SCRIPT_DIR}/versions/${CI_VERSION}/Gemfile.lock" $PWD
+
+		fastlane install_plugins
 	fi
 
 elif [ "${script_input}" == 'Prep Slack message' ]; then
