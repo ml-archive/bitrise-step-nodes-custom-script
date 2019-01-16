@@ -286,6 +286,12 @@ platform :ios do
 
     archive_path = "#{Dir.pwd}/../archive.xcarchive"
 
+    # Already built for Testflight, so we just need to re-export it and not build
+    if File.exist?(archive_path)
+      UI.message "Testflight archive already created, skipping hockey build and re-exporting instead"
+      return resignAndExport(target, options, workspace, project, archive_path)
+    end
+
     # Certificates and profiles
     UI.message "Installing certificate and profiles for Hockey"
 
@@ -334,6 +340,48 @@ platform :ios do
     UI.message "Generated Hockey IPA at: #{ipa_path}"
 
     return ipa_path
+  end
+
+  def resignAndExport(target, options, workspace, project, archive_path)
+
+    UI.header "Re-exporting archive without bitcode"
+    second_path = gym(
+      workspace: workspace,
+      project: project,
+      scheme: options['scheme'],
+      output_name: "#{options['scheme']}-hockey",
+      configuration: options['configuration'],
+      include_bitcode: false,
+      skip_build_archive: true,
+      archive_path: archive_path
+    )
+    UI.message "Generated non-bitcode IPA at: #{second_path}"
+
+
+    # Hockey
+    # ----------
+    UI.message "Installing certificate and profiles"
+        match(
+          git_url: DEFAULT_MATCH_REPO,
+          git_branch: DEFAULT_ENTERPRISE_BRANCH,
+          type: "enterprise",
+          app_identifier: "*",
+          team_id: DEFAULT_ENTERPRISE_TEAM,
+          readonly: true
+        )
+
+    UI.message "Creating Hockey build"
+
+    resign(
+      ipa: second_path,
+      signing_identity: "iPhone Distribution: Nodes Aps",
+      provisioning_profile: ENV['sigh_*_enterprise_profile-path'],
+      use_app_entitlements: false,
+      verbose: true
+    )
+
+    UI.success "Hockey IPA at: #{second_path}"
+    return second_path
   end
 
   def build(target, options)
