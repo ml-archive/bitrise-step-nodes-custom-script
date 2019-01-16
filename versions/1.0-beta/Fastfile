@@ -174,7 +174,7 @@ platform :ios do
   # ---------------------------------------
 
   def buildAppStore(target, options, workspace, project)
-    UI.message "Starting TestFlight build"
+    UI.header "Starting TestFlight build"
 
     bundle_id = options['bundle_id']
     archive_path = "#{Dir.pwd}/../archive.xcarchive"
@@ -249,15 +249,6 @@ platform :ios do
     # Build
     UI.message "Creating Testflight build"
 
-    # Fastlane wont let you pass both a workspace and project
-    workspace = options['workspace']
-    project = options['xcodeproj']
-    unless workspace.nil?
-      project = nil
-      UI.message "Installing Cocoapods"
-      cocoapods(repo_update: true) # I mean this is why you're using a workspace, right?
-    end
-
     # Add badge for beta builds
     if options['configuration'] != "Release"
       UI.message "Adding badge"
@@ -282,7 +273,7 @@ platform :ios do
   end
 
   def buildHockey(target, options, workspace, project)
-    UI.message "Starting Hockey build"
+    UI.header "Starting Hockey build"
 
     archive_path = "#{Dir.pwd}/../archive.xcarchive"
 
@@ -385,7 +376,7 @@ platform :ios do
   end
 
   def build(target, options)
-    UI.message "Building #{target} with scheme #{options['scheme']} in #{options['configuration']} configuration."
+    UI.header "Building #{target} with scheme #{options['scheme']} in #{options['configuration']} configuration."
 
     # Fastlane wont let you pass both a workspace and project
     workspace = options['workspace']
@@ -393,7 +384,7 @@ platform :ios do
 
     unless workspace.nil?
       project = nil
-      UI.message "Installing Cocoapods"
+      UI.header "Installing Cocoapods"
       cocoapods(repo_update: true)
     end
 
