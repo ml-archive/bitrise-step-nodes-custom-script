@@ -250,7 +250,7 @@ platform :ios do
     UI.message "Creating Testflight build"
 
     # Add badge for beta builds
-    if options['configuration'] != "Release" && options['enable_badge'] == true
+    if options['configuration'] != "Release" && options['enable-badge'] == true
       UI.message "Adding badge"
       version = options['xcode_version']
       build = options['xcode_build']
@@ -408,7 +408,7 @@ platform :ios do
     end
 
     # If for some reason the get_team_name doesnt work, you can manually specify it
-    team_name = options["team_name"]
+    team_name = options["team-name"]
     if team_name.nil?
       if testflight_upload_enabled
         bundle_id = options['bundle_id']
