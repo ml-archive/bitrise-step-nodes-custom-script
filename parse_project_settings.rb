@@ -185,11 +185,21 @@ unless DEBUG_MODE
 
     puts "|- Verifying '#{key}' with version #{xcode_version} (#{xcode_build})."
 
-    # Get numbers from hockey
+    # Get hockey app id object
     hockey_app_id = val["settings"]["hockey-app-id"]
 
+    # Figure out if hockey app id object is a hash (for configuration mapping to ids)
+    # or a String with static hockey app id 
+    if hockey_app_id.respond_to?(:has_key?) then
+        raise red """|- HockeyApp app id is missing for the current configuration, please add it or switch to static app id.""" unless hockey_app_id.has_key?(configuration)
+
+        # Parse from nested dict
+        hockey_app_id = hockey_app_id[configuration]
+        val["settings"]["hockey-app-id"] = hockey_app_id
+    end
+
     # Check if hockey id is filled in correctly
-    if hockey_app_id.nil? || hockey_app_id.empty? then
+    if hockey_app_id.empty? || !hockey_app_id.is_a?(String) then
       raise red """|- HockeyApp app id is missing, can't continue with build as version and build number can't be verified. 
       All apps should have an associated HockeyApp app."""
     end
