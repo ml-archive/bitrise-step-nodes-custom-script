@@ -442,7 +442,7 @@ platform :ios do
     if hockey_upload_enabled || testflight_upload_enabled
 
       # If we shouldn't create an enterprise build, make a real one instead
-      if resign_hockey_build == false
+      if !resign_hockey_build
 
         # If testflight upload was enabled then we already have the ipa and we can reuse it
         if testflight_upload_enabled 
