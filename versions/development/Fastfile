@@ -427,7 +427,7 @@ platform :ios do
 
     testflight_upload_enabled = ENV['TESTFLIGHT_UPLOAD_FLAG'] == '1'
     hockey_upload_enabled = ENV['HOCKEY_UPLOAD_FLAG'] == '1'
-    resign_hockey_build = options["resign-hockey-build"] || true 
+    resign_hockey_build = options.fetch("resign-hockey-build", true)
 
     # Testflight
     # ----------
@@ -441,9 +441,11 @@ platform :ios do
 
     if hockey_upload_enabled || testflight_upload_enabled
 
-      # If we shouldn't create an enterprise build, make a real one instead
-      if !resign_hockey_build
-
+      # If we should create an enterprise build, make switch signing and make enterprise hockey build
+      # Otherwise determine if we can use testflight ipa or we need to build a testflight ipa for upload to hockey
+      if resign_hockey_build
+        hockey_ipa = buildHockey(target, options, workspace, project)
+      else
         # If testflight upload was enabled then we already have the ipa and we can reuse it
         if testflight_upload_enabled 
           UI.message "Using Testflight IPA for Hockey as resigning with enterprise is disabled"
@@ -453,9 +455,6 @@ platform :ios do
           UI.message "Building Testflight IPA for Hockey as resigning with enterprise is disabled"
           hockey_ipa = buildAppStore(target, options, workspace, project)
         end
-      else
-        # Otherwise resign and continue as normal
-        hockey_ipa = buildHockey(target, options, workspace, project)
       end
     end
 
