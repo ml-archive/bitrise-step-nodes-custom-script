@@ -335,17 +335,18 @@ platform :ios do
       return resignAndExport(target, options, workspace, project, archive_path)
     end
 
-    update_signing(
-      bundle_id: "*", 
-      match_repo: options["match-git-repo"] || DEFAULT_MATCH_REPO, 
-      match_branch: DEFAULT_ENTERPRISE_BRANCH, 
-      match_type: "enterprise", 
-      match_team_id: DEFAULT_ENTERPRISE_TEAM,
-      project: options['xcodeproj'],
-      target: target,
-      code_signing_identity: "iPhone Distribution: Nodes Aps",
-      extensions_ids: options["extensions-bundle-ids"]
-    )
+    # Sign using enterprise certs
+      update_signing(
+        bundle_id: "*", 
+        match_repo: options["match-git-repo"] || DEFAULT_MATCH_REPO, 
+        match_branch: DEFAULT_ENTERPRISE_BRANCH, 
+        match_type: "enterprise", 
+        match_team_id: DEFAULT_ENTERPRISE_TEAM,
+        project: options['xcodeproj'],
+        target: target,
+        code_signing_identity: "iPhone Distribution: Nodes Aps",
+        extensions_ids: options["extensions-bundle-ids"]
+      )
 
     UI.message "Creating Hockey build without bitcode and entitlements"
     ipa_path = gym(
@@ -357,7 +358,6 @@ platform :ios do
       include_bitcode: false,
       xcargs: "CODE_SIGN_ENTITLEMENTS=''",
       archive_path: archive_path,
-      skip_build_archive: false, # TODO: this should be improved in the future to re-use testflight builds, but entitlements need to be stripped
       export_method: "enterprise",
       export_team_id: DEFAULT_ENTERPRISE_TEAM,
       export_xcargs: "CODE_SIGN_ENTITLEMENTS=''"
@@ -427,6 +427,7 @@ platform :ios do
 
     testflight_upload_enabled = ENV['TESTFLIGHT_UPLOAD_FLAG'] == '1'
     hockey_upload_enabled = ENV['HOCKEY_UPLOAD_FLAG'] == '1'
+    resign_hockey_build = options["resign-hockey-build"] || true 
 
     # Testflight
     # ----------
@@ -439,7 +440,23 @@ platform :ios do
     # ----------
 
     if hockey_upload_enabled || testflight_upload_enabled
+
+      # If we shouldn't create an enterprise build, make a real one instead
+      if resign_hockey_build == false
+
+        # If testflight upload was enabled then we already have the ipa and we can reuse it
+        if testflight_upload_enabled 
+          UI.message "Using Testflight IPA for Hockey as resigning with enterprise is disabled"
+          hockey_ipa = testflight_ipa
+        else 
+          # Otherwise no build was made, but we want to sign it like App Store one
+          UI.message "Building Testflight IPA for Hockey as resigning with enterprise is disabled"
+          hockey_ipa = buildAppStore(target, options, workspace, project)
+        end
+      else
+        # Otherwise resign and continue as normal
         hockey_ipa = buildHockey(target, options, workspace, project)
+      end
     end
 
     # If for some reason the get_team_name doesnt work, you can manually specify it
