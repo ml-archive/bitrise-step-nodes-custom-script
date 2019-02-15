@@ -2,6 +2,7 @@
 set -ex
 
 THIS_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+DEFAULT_CI_VERSION='1.0'
 
 copyFastfile()
 {
@@ -13,7 +14,7 @@ copyFastfile()
 	# Check if we have ci-version set correctly
 	if [ -z "${CI_VERSION}" ]; then
 		# not set, fallback to v0.2
-		CI_VERSION='0.2'
+		CI_VERSION=$DEFAULT_CI_VERSION
 	fi
 
 		# Try to load fastile for the correct CI version
@@ -25,7 +26,6 @@ copyFastfile()
 		exit 1
 	fi
 }
-
 
 if [ "${script_input}" == 'Fastlane copy' ]; then
 
@@ -46,6 +46,19 @@ if [ "${script_input}" == 'Fastlane copy' ]; then
 elif [ "${script_input}" == 'Prep Slack message' ]; then
 	copyFastfile
 else
-	gem install hockeyver
-	ruby "${THIS_SCRIPT_DIR}/parse_project_settings.rb"
+	# Check if we have ci-version set correctly
+	if [ -z "${CI_VERSION}" ]; then
+		# not set, fallback to default CI version
+		CI_VERSION=$DEFAULT_CI_VERSION
+	fi
+
+	# Try to load fastile for the correct CI version
+	if [ -e "${THIS_SCRIPT_DIR}/versions/${CI_VERSION}/parse_project_settings.rb" ]; then
+		gem install hockeyver
+		ruby "${THIS_SCRIPT_DIR}/versions/${CI_VERSION}/parse_project_settings.rb"
+	else
+		# Otherwise fail
+		echo "No fastfile found in ci tools version folder ${CI_VERSION}."
+		exit 1
+	fi
 fi
