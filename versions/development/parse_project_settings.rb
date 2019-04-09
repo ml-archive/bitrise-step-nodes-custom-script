@@ -297,5 +297,6 @@ system "bitrise envman add --key HOCKEY_UPLOAD_FLAG --value '#{hockey_upload}' -
 system "bitrise envman add --key TESTFLIGHT_UPLOAD_FLAG --value '#{testflight_upload}' --no-expand" unless DEBUG_MODE
 system "bitrise envman add --key SLACK_CHANNEL --value '#{project_settings['slack-channel']}' --no-expand " unless DEBUG_MODE
 system "bitrise envman add --key CI_VERSION --value '#{ci_version}' --no-expand " unless DEBUG_MODE
+system "bitrise envman add --key OBFUSCATE_CODE --value '#{project_settings['obfuscate']}' --no-expand " unless DEBUG_MODE
 puts green "|- Succesfully generated build config."
 pp build_config unless not VERBOSE

@@ -169,6 +169,21 @@ platform :ios do
     end
   end
 
+
+    # ---------------------------------------
+    # CODE OBFUSCATION
+    # ---------------------------------------
+
+    def obfuscate(config)
+      UI.header "Obfuscating code"
+      project = config['workspace'] || config['xcodeproj']
+      target = config['scheme']
+      #TODO: Fix downloading. Currently it is coped from the Fastlane folder
+
+      sh("../swiftshield -automatic -project-root ../ -automatic-project-file #{project} -automatic-project-scheme #{target}")
+
+    end
+
   # ---------------------------------------
   # Signing
   # ---------------------------------------
@@ -428,6 +443,12 @@ platform :ios do
     testflight_upload_enabled = ENV['TESTFLIGHT_UPLOAD_FLAG'] == '1'
     hockey_upload_enabled = ENV['HOCKEY_UPLOAD_FLAG'] == '1'
     resign_hockey_build = options.fetch("resign-hockey-build", true)
+
+    # Obfuscation
+    #------------
+    if ENV['OBFUSCATE_CODE']
+      obfuscate(options)
+    end
 
     # Testflight
     # ----------
