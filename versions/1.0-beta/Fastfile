@@ -208,7 +208,7 @@ platform :ios do
     UI.message "Setting provisioning profile"
     update_project_provisioning(
       xcodeproj: options['xcodeproj'],
-      target_filter: target,
+      target_filter: "\b#{target}\b",
       profile: provisioning_profile_path
     )
 
