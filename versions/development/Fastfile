@@ -215,7 +215,7 @@ platform :ios do
     UI.message "Setting provisioning profile"
     update_project_provisioning(
       xcodeproj: project, 
-      target_filter: "\b#{target}\b", 
+      target_filter: "^#{target}$", 
       profile: provisioning_profile_path,
       code_signing_identity: code_signing_identity
     )
@@ -258,7 +258,7 @@ platform :ios do
         UI.message "Setting provisioning profile for extension: #{ext_id}"
         update_project_provisioning(
           xcodeproj: project,
-          target_filter: ext_target,
+          target_filter: "^#{ext_target}$",
           profile: ext_provisioning_profile_path
         )
       end
