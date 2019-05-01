@@ -79,7 +79,8 @@ platform :ios do
           dsym: target['dsym'],
           notes: target['changelog'],
           notify: "0",
-          public_identifier: target['hockey_app_id']   
+          public_identifier: target['hockey_app_id'],
+          bypass_cdn: true   
         )
         info = lane_context[Actions::SharedValues::HOCKEY_BUILD_INFORMATION]       
         $notify_config << {
