@@ -215,7 +215,7 @@ unless DEBUG_MODE
     hockey_version = buildnumber["version"]
     hockey_build = buildnumber["build"].to_i
 
-    disable_hockey_version_check = project_settings['disableHockeyVersionCheck'] ? true : false
+    disable_hockey_version_check = project_settings['disable-hockey-version-check'] ? true : false
 
     if disable_hockey_version_check
       puts yellow "Hockey version number check is disabled. The build will fail uploading to TestFlight if you try to upload an already existing version."
