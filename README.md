@@ -2,8 +2,7 @@
 
 Runs a custom script hosted at our private github
 
-
-To add this step to your workflow, add this as a step in bitrise.yml: 
+To add this step to your workflow, add this as a step in bitrise.yml:
 
 `- git::https://github.com/nodes-ios/bitrise-step-nodes-custom-script.git@master:`
 
