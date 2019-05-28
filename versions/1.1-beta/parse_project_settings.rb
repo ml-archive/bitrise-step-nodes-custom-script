@@ -204,24 +204,27 @@ unless DEBUG_MODE
       All apps should have an associated HockeyApp app."""
     end
 
-    buildnumber = HockeyVer.parse_hockey_version hockey_app_id, ENV["HOCKEY_API_TOKEN"]
-
-    # Check if build number from hockey is nil
-    if buildnumber.nil?
-      puts yellow "|- No build found on Hockey, proceeding with build"
-      next
-    end
-
-    hockey_version = buildnumber["version"]
-    hockey_build = buildnumber["build"].to_i
-
     disable_hockey_version_check = project_settings['disable-hockey-version-check'] ? true : false
 
     if disable_hockey_version_check
       puts yellow "Hockey version number check is disabled. The build will fail uploading to TestFlight if you try to upload an already existing version."
     end
-    # Compare, make sure that build is always higher and version is at least higher or equal
+
+    #If hockey check has been disabled, skip version check 
     unless disable_hockey_version_check
+      buildnumber = HockeyVer.parse_hockey_version hockey_app_id, ENV["HOCKEY_API_TOKEN"]
+
+      # Check if build number from hockey is nil
+      if buildnumber.nil?
+        puts yellow "|- No build found on Hockey, proceeding with build"
+        next
+      end
+
+      hockey_version = buildnumber["version"]
+      hockey_build = buildnumber["build"].to_i
+
+      # Compare, make sure that build is always higher and version is at least higher or equal
+
       unless (Version.new(xcode_version) >= Version.new(hockey_version)) && (xcode_build > hockey_build)
         valid = false
         warning_message = """#{key}: Xcode version #{xcode_version} (#{xcode_build}) is lower or equal than the one on Hockey #{hockey_version} (#{hockey_build})."""
