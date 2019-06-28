@@ -478,6 +478,8 @@ platform :ios do
     #------------
     if ENV['OBFUSCATE_CODE']
       obfuscate(options)
+    else
+      UI.header "Skipping obfuscating step. Values is #{ENV['OBFUSCATE_CODE']}"
     end
 
     # Testflight

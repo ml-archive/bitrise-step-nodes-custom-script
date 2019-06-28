@@ -2,7 +2,7 @@
 set -ex
 
 THIS_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-DEFAULT_CI_VERSION='1.0'
+DEFAULT_CI_VERSION='1.2'
 
 copyFastfile()
 {
@@ -13,7 +13,7 @@ copyFastfile()
 
 	# Check if we have ci-version set correctly
 	if [ -z "${CI_VERSION}" ]; then
-		# not set, fallback to v0.2
+		# not set, fallback to default
 		CI_VERSION=$DEFAULT_CI_VERSION
 	fi
 
