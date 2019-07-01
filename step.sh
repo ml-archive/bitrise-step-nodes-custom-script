@@ -39,6 +39,7 @@ if [ "${script_input}" == 'Fastlane copy' ]; then
 		cp "${THIS_SCRIPT_DIR}/versions/${CI_VERSION}/Gemfile" $PWD
 		cp "${THIS_SCRIPT_DIR}/versions/${CI_VERSION}/Gemfile.lock" $PWD
 
+		gem install bundler "--force" "--no-document" "-v" "2.0.2"
 		bundle install
 		bundle exec fastlane -- install_plugins
 	fi
