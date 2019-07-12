@@ -2,7 +2,7 @@
 set -ex
 
 THIS_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-DEFAULT_CI_VERSION='1.0'
+DEFAULT_CI_VERSION='1.2'
 
 copyFastfile()
 {
@@ -13,7 +13,7 @@ copyFastfile()
 
 	# Check if we have ci-version set correctly
 	if [ -z "${CI_VERSION}" ]; then
-		# not set, fallback to v0.2
+		# not set, fallback to default
 		CI_VERSION=$DEFAULT_CI_VERSION
 	fi
 
@@ -39,6 +39,7 @@ if [ "${script_input}" == 'Fastlane copy' ]; then
 		cp "${THIS_SCRIPT_DIR}/versions/${CI_VERSION}/Gemfile" $PWD
 		cp "${THIS_SCRIPT_DIR}/versions/${CI_VERSION}/Gemfile.lock" $PWD
 
+		gem install bundler "--force" "--no-document" "-v" "2.0.2"
 		bundle install
 		bundle exec fastlane -- install_plugins
 	fi
