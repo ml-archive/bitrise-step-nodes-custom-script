@@ -285,15 +285,15 @@ platform :ios do
   # CODE OBFUSCATION
   # ---------------------------------------
 
-  def obfuscate(config)
+  def obfuscate(target, options, workspace, project, scheme)
     UI.header "Obfuscating code"
-    project = config['workspace'] || config['xcodeproj']
-    target = config['scheme']
 
     download_and_save_lastest_obfuscator
 
-    sh("../swiftshield -automatic -project-root ../ -automatic-project-file #{project} -automatic-project-scheme #{target}")
+    sign_project_for_hockey(target, options, workspace, project)
 
+    sh("../swiftshield -automatic -project-root #{File.dirname(project)}/ -automatic-project-file #{project} -automatic-project-scheme #{scheme} -verbose")
+    sh("echo $?")
   end
 
   def download_and_save_lastest_obfuscator
@@ -306,7 +306,7 @@ platform :ios do
       # save swiftshield.zip in root
       file.write open(download_url).read
 
-      shield_zip_path =  __dir__ + "/swiftshield.zip"
+      shield_zip_path = "../swiftshield.zip"
       shield_unzip_path = "../"
 
       # unzip downloaed swiftshield.zip
@@ -334,7 +334,6 @@ platform :ios do
     else
       UI.message "Could not find asset nstack-translations-generator.bundle.zip attached to the release"
       # restore replaced files to default
-      perform_replacements(restore: true, project_name: project_name)
       exit
     end
 
@@ -347,24 +346,14 @@ platform :ios do
         puts " -> Unzipping #{zip_file}"
           zip_file.each do |file|
             file_path = File.join(destination, file.name)
+            UI.message "Unzipping file at #{file_path}"
             # extract file and replace if needed
             zip_file.extract(file, file_path) { true }
           end
       end
   end
 
-
-
-  def buildHockey(target, options, workspace, project)
-    UI.header "Starting Hockey build"
-
-    archive_path = "#{Dir.pwd}/../archive.xcarchive"
-
-    # Already built for Testflight, so we just need to re-export it and not build
-    if File.exist?(archive_path)
-      UI.message "Testflight archive already created, skipping hockey build and re-exporting instead"
-      return resignAndExport(target, options, workspace, project, archive_path)
-    end
+  def sign_project_for_hockey(target, options, workspace, project)
 
     # Certificates and profiles
     UI.message "Installing certificate and profiles for Hockey"
@@ -394,6 +383,21 @@ platform :ios do
       profile: ENV['sigh_*_enterprise_profile-path'],
       code_signing_identity: "iPhone Distribution: Nodes Aps"
     )
+
+  end
+
+  def buildHockey(target, options, workspace, project)
+    UI.header "Starting Hockey build"
+
+    archive_path = "#{Dir.pwd}/../archive.xcarchive"
+
+    # Already built for Testflight, so we just need to re-export it and not build
+    if File.exist?(archive_path)
+      UI.message "Testflight archive already created, skipping hockey build and re-exporting instead"
+      return resignAndExport(target, options, workspace, project, archive_path)
+    else
+      sign_project_for_hockey(target, options, workspace, project)
+    end
 
     UI.message "Creating Hockey build without bitcode and entitlements"
     ipa_path = gym(
@@ -459,7 +463,8 @@ platform :ios do
   end
 
   def build(target, options)
-    UI.header "Building #{target} with scheme #{options['scheme']} in #{options['configuration']} configuration."
+    scheme = options['scheme']
+    UI.header "Building #{target} with scheme #{scheme} in #{options['configuration']} configuration."
 
     # Fastlane wont let you pass both a workspace and project
     workspace = options['workspace']
@@ -476,8 +481,11 @@ platform :ios do
 
     # Obfuscation
     #------------
-    if ENV['OBFUSCATE_CODE']
-      obfuscate(options)
+    if ENV['OBFUSCATE_CODE'] == "1"
+      UI.header "Running obfuscating step. Values is #{ENV['OBFUSCATE_CODE']}"
+      obfuscate(target, options, workspace, project, scheme)
+    else
+      UI.header "Skipping obfuscating step. Values is #{ENV['OBFUSCATE_CODE']}"
     end
 
     # Testflight
