@@ -185,7 +185,7 @@ platform :ios do
 
     bundle_id = options['bundle_id']
     archive_path = "#{Dir.pwd}/../archive.xcarchive"
-    export_method = ENV['EXPORT_METHOD']
+    export_method = "app-store"
     export_method_match = export_method.gsub('-', '')
 
       # Certificates and profiles
@@ -507,7 +507,7 @@ platform :ios do
     if team_name.nil?
       if testflight_upload_enabled
         bundle_id = options['bundle_id']
-        export_method = ENV['EXPORT_METHOD']
+        export_method = "app-store"
         export_method_match = export_method.gsub('-', '')
         path_env_var = "sigh_#{bundle_id}_#{export_method_match}_profile-path"
         team_env_var = "sigh_#{bundle_id}_#{export_method_match}_team-id"
