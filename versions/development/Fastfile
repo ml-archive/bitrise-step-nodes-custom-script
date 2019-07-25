@@ -180,287 +180,9 @@ platform :ios do
   # CUSTOM
   # ---------------------------------------
 
-  def buildAppStore(target, options, workspace, project)
-    UI.header "Starting TestFlight build"
-
-    bundle_id = options['bundle_id']
-    archive_path = "#{Dir.pwd}/../archive.xcarchive"
-    export_method = "app-store"
-    export_method_match = export_method.gsub('-', '')
-
-      # Certificates and profiles
-    UI.message "Installing certificate and profiles for TestFlight"
-
-    match_branch = options["match-git-branch"]
-    match(
-      git_url: DEFAULT_MATCH_REPO,
-      git_branch: match_branch,
-      type: export_method_match,
-      app_identifier: bundle_id,
-      readonly: true
-    )
-
-    path_env_var = "sigh_#{bundle_id}_#{export_method_match}_profile-path"
-    team_env_var = "sigh_#{bundle_id}_#{export_method_match}_team-id"
-    provisioning_profile_path = ENV["#{path_env_var}"]
-    team_id = ENV["#{team_env_var}"]
-
-    UI.message "Switching to manual code signing"
-    disable_automatic_code_signing(
-      path: options['xcodeproj'],
-      targets: target,
-      team_id: team_id
-    )
-
-    UI.message "Setting provisioning profile"
-    update_project_provisioning(
-      xcodeproj: options['xcodeproj'],
-      target_filter: "^#{target}$",
-      profile: provisioning_profile_path
-    )
-
-    # Install certificates and profiles for extensions
-    extensions_ids = options["extensions-bundle-ids"] ||= Hash.new
-    unless extensions_ids.empty?
-      extensions_ids.each_pair do |ext_target, ext_id|
-        UI.message "Installing certificate and profiles for extension: #{ext_id}"
-        match(
-          git_url: DEFAULT_MATCH_REPO,
-          git_branch: match_branch,
-          type: export_method_match,
-          app_identifier: ext_id,
-          readonly: true
-        )
-
-        ext_path_env_var = "sigh_#{ext_id}_#{export_method_match}_profile-path"
-        ext_team_env_var = "sigh_#{ext_id}_#{export_method_match}_team-id"
-        ext_provisioning_profile_path = ENV["#{ext_path_env_var}"]
-        ext_team_id = ENV["#{ext_team_env_var}"]
-
-        UI.message "Switching to manual code signing for extension: #{ext_id}"
-        disable_automatic_code_signing(
-          path: options['xcodeproj'],
-          targets: ext_target,
-          team_id: ext_team_id
-        )
-
-        UI.message "Setting provisioning profile for extension: #{ext_id}"
-        update_project_provisioning(
-          xcodeproj: options['xcodeproj'],
-          target_filter: "^#{ext_target}$",
-          profile: ext_provisioning_profile_path
-        )
-      end
-    end
-
-    # Build
-    UI.message "Creating Testflight build"
-
-    # Add badge for beta builds
-    if options['configuration'] != "Release" && options['enable-badge'] == true
-      UI.message "Adding badge"
-      version = options['xcode_version']
-      build = options['xcode_build']
-      add_badge(shield: "#{version}-#{build}-blue")
-    else
-      UI.important "Skpping badge"
-    end
-
-    ipa_path = gym(
-      workspace: workspace,
-      project: project,
-      scheme: options['scheme'],
-      configuration: options['configuration'],
-      export_method: export_method,
-      archive_path: archive_path,
-      export_team_id: team_id,
-      codesigning_identity: "iPhone Distribution"
-    )
-    UI.message "Generated TestFlight IPA at: #{ipa_path}"
-
-    return ipa_path
-  end
-
   # ---------------------------------------
-  # CODE OBFUSCATION
+  # Build
   # ---------------------------------------
-
-  def obfuscate(target, options, workspace, project, scheme)
-    UI.header "Obfuscating code"
-
-    download_and_save_lastest_obfuscator
-
-    sign_project_for_hockey(target, options, workspace, project)
-
-    sh("../swiftshield -automatic -project-root #{File.dirname(project)}/ -automatic-project-file #{project} -automatic-project-scheme #{scheme} -verbose")
-    sh("echo $?")
-  end
-
-  def download_and_save_lastest_obfuscator
-    download_url = get_github_obfuscator_asset_download_url
-
-    UI.message "Attempting to download asset from url: #{download_url}"
-
-    # download asset
-    File.open('swiftshield.zip', "wb") do |file|
-      # save swiftshield.zip in root
-      file.write open(download_url).read
-
-      shield_zip_path = "../swiftshield.zip"
-      shield_unzip_path = "../"
-
-      # unzip downloaed swiftshield.zip
-      unzip_file(file: file, destination: shield_unzip_path)
-      # remove swiftshield.zip
-      UI.message "Removing file at path: #{shield_zip_path}"
-      File.delete(shield_zip_path) if File.exist?(shield_zip_path)
-    end
-  end
-
-  # gets obfuscator download URL from the latest release on Github
-  def get_github_obfuscator_asset_download_url
-    auth = {:username => GITHUB_USER, :password => GITHUB_TOKEN}
-    response = HTTParty.get('https://api.github.com/repos/rockbruno/swiftshield/releases/latest', :basic_auth => auth)
-    parsed_response_json = JSON.parse(response.body)
-
-    assets = parsed_response_json["assets"]
-
-    shield_asset = assets.find { |asset| asset["name"].include? "swiftshield.zip" }
-
-    if shield_asset != nil
-      shield_asset_download_url = shield_asset["browser_download_url"]
-      UI.message "Got asset download url: #{shield_asset_download_url}"
-      return shield_asset_download_url
-    else
-      UI.message "Could not find asset nstack-translations-generator.bundle.zip attached to the release"
-      # restore replaced files to default
-      exit
-    end
-
-  end
-
-  # MARK: - Unzip
-
-  def unzip_file(file:, destination:)
-      ::Zip::File.open(file) do |zip_file|
-        puts " -> Unzipping #{zip_file}"
-          zip_file.each do |file|
-            file_path = File.join(destination, file.name)
-            UI.message "Unzipping file at #{file_path}"
-            # extract file and replace if needed
-            zip_file.extract(file, file_path) { true }
-          end
-      end
-  end
-
-  def sign_project_for_hockey(target, options, workspace, project)
-
-    # Certificates and profiles
-    UI.message "Installing certificate and profiles for Hockey"
-
-    UI.message "Switching to manual code signing"
-    disable_automatic_code_signing(
-      path: options['xcodeproj'],
-      targets: target,
-      team_id: DEFAULT_ENTERPRISE_TEAM
-    )
-
-    UI.message "Installing enterprise certificate and profiles"
-    match(
-      git_url: DEFAULT_MATCH_REPO,
-      git_branch: DEFAULT_ENTERPRISE_BRANCH,
-      type: "enterprise",
-      app_identifier: "*",
-      team_id: DEFAULT_ENTERPRISE_TEAM,
-      readonly: true
-    )
-
-
-    UI.message "Setting provisioning profile"
-    update_project_provisioning(
-      xcodeproj: options['xcodeproj'],
-      target_filter: "^#{target}$",
-      profile: ENV['sigh_*_enterprise_profile-path'],
-      code_signing_identity: "iPhone Distribution: Nodes Aps"
-    )
-
-  end
-
-  def buildHockey(target, options, workspace, project)
-    UI.header "Starting Hockey build"
-
-    archive_path = "#{Dir.pwd}/../archive.xcarchive"
-
-    # Already built for Testflight, so we just need to re-export it and not build
-    if File.exist?(archive_path)
-      UI.message "Testflight archive already created, skipping hockey build and re-exporting instead"
-      return resignAndExport(target, options, workspace, project, archive_path)
-    else
-      sign_project_for_hockey(target, options, workspace, project)
-    end
-
-    UI.message "Creating Hockey build without bitcode and entitlements"
-    ipa_path = gym(
-      workspace: workspace,
-      project: project,
-      scheme: options['scheme'],
-      output_name: "#{options['scheme']}-hockey",
-      configuration: options['configuration'],
-      include_bitcode: false,
-      xcargs: "CODE_SIGN_ENTITLEMENTS=''",
-      archive_path: archive_path,
-      skip_build_archive: false, # TODO: this should be improved in the future to re-use testflight builds, but entitlements need to be stripped
-      export_method: "enterprise",
-      export_team_id: DEFAULT_ENTERPRISE_TEAM,
-      export_xcargs: "CODE_SIGN_ENTITLEMENTS=''"
-    )
-
-    UI.message "Generated Hockey IPA at: #{ipa_path}"
-
-    return ipa_path
-  end
-
-  def resignAndExport(target, options, workspace, project, archive_path)
-
-    UI.header "Re-exporting archive without bitcode"
-    second_path = gym(
-      workspace: workspace,
-      project: project,
-      scheme: options['scheme'],
-      output_name: "#{options['scheme']}-hockey",
-      configuration: options['configuration'],
-      include_bitcode: false,
-      skip_build_archive: true,
-      archive_path: archive_path
-    )
-    UI.message "Generated non-bitcode IPA at: #{second_path}"
-
-
-    # Hockey
-    # ----------
-    UI.message "Installing certificate and profiles"
-        match(
-          git_url: DEFAULT_MATCH_REPO,
-          git_branch: DEFAULT_ENTERPRISE_BRANCH,
-          type: "enterprise",
-          app_identifier: "*",
-          team_id: DEFAULT_ENTERPRISE_TEAM,
-          readonly: true
-        )
-
-    UI.message "Creating Hockey build"
-
-    resign(
-      ipa: second_path,
-      signing_identity: "iPhone Distribution: Nodes Aps",
-      provisioning_profile: ENV['sigh_*_enterprise_profile-path'],
-      use_app_entitlements: false,
-      verbose: true
-    )
-
-    UI.success "Hockey IPA at: #{second_path}"
-    return second_path
-  end
 
   def build(target, options)
     scheme = options['scheme']
@@ -543,6 +265,321 @@ platform :ios do
     }
 
     UI.success "Successfully built everything."
+  end
+
+  # ---------------------------------------
+  # Build Hockey
+  # ---------------------------------------
+
+  def buildHockey(target, options, workspace, project)
+    UI.header "Starting Hockey build"
+
+    archive_path = "#{Dir.pwd}/../archive.xcarchive"
+
+    # Already built for Testflight, so we just need to re-export it and not build
+    if File.exist?(archive_path)
+      UI.message "Testflight archive already created, skipping hockey build and re-exporting instead"
+      return resignAndExport(target, options, workspace, project, archive_path)
+    else
+      sign_with_nodes_enterprise(target, options, workspace)
+    end
+
+    UI.message "Creating Hockey build without bitcode and entitlements"
+    ipa_path = gym(
+      workspace: workspace,
+      project: project,
+      scheme: options['scheme'],
+      output_name: "#{options['scheme']}-hockey",
+      configuration: options['configuration'],
+      include_bitcode: false,
+      xcargs: "CODE_SIGN_ENTITLEMENTS=''",
+      archive_path: archive_path,
+      skip_build_archive: false, # TODO: this should be improved in the future to re-use testflight builds, but entitlements need to be stripped
+      export_method: "enterprise",
+      export_team_id: DEFAULT_ENTERPRISE_TEAM,
+      export_xcargs: "CODE_SIGN_ENTITLEMENTS=''"
+    )
+
+    UI.message "Generated Hockey IPA at: #{ipa_path}"
+
+    return ipa_path
+  end
+
+  # ---------------------------------------
+  # Build AppStore
+  # ---------------------------------------
+
+  def buildAppStore(target, options, workspace, project)
+    UI.header "Starting TestFlight build"
+    UI.header "SIGN for #{options['bundle_id']}"
+    sign_with_matchfile_appstore(target, options, workspace, options['bundle_id'])
+
+    # Install certificates and profiles for extensions
+    extensions_ids = options["extensions-bundle-ids"] ||= Hash.new
+    unless extensions_ids.empty?
+      extensions_ids.each_pair do |ext_target, ext_id|
+        UI.header "SIGN for #{ext_id}"
+        UI.message "Installing certificate and profiles for extension: #{ext_id}"
+        sign_with_matchfile_appstore(ext_target, options, workspace, ext_id)
+      end
+    end
+
+    # Build
+    UI.message "Creating Testflight build"
+
+    # Add badge for beta builds
+    if options['configuration'] != "Release" && options['enable-badge'] == true
+      UI.message "Adding badge"
+      version = options['xcode_version']
+      build = options['xcode_build']
+      add_badge(shield: "#{version}-#{build}-blue")
+    else
+      UI.important "Skpping badge"
+    end
+
+    archive_path = "#{Dir.pwd}/../archive.xcarchive"
+    team_env_var = "sigh_#{options['bundle_id']}_appstore_team-id"
+    team_id = ENV["#{team_env_var}"]
+
+    UI.header "There goes GYM"
+
+    ipa_path = gym(
+      workspace: workspace,
+      project: project,
+      scheme: options['scheme'],
+      configuration: options['configuration'],
+      export_method: "app-store",
+      archive_path: archive_path,
+      export_team_id: team_id,
+      codesigning_identity: "iPhone Distribution"
+    )
+    UI.message "Generated TestFlight IPA at: #{ipa_path}"
+
+    return ipa_path
+  end
+
+  # ---------------------------------------
+  # CODE OBFUSCATION
+  # ---------------------------------------
+
+  def obfuscate(target, options, workspace, project, scheme)
+    UI.header "Obfuscating code"
+
+    download_and_save_lastest_obfuscator
+
+    sign_project_for_hockey(target, options, workspace, project)
+
+    sh("../swiftshield -automatic -project-root #{File.dirname(project)}/ -automatic-project-file #{project} -automatic-project-scheme #{scheme} -verbose")
+    sh("echo $?")
+  end
+
+  def download_and_save_lastest_obfuscator
+    download_url = get_github_obfuscator_asset_download_url
+
+    UI.message "Attempting to download asset from url: #{download_url}"
+
+    # download asset
+    File.open('swiftshield.zip', "wb") do |file|
+      # save swiftshield.zip in root
+      file.write open(download_url).read
+
+      shield_zip_path = "../swiftshield.zip"
+      shield_unzip_path = "../"
+
+      # unzip downloaed swiftshield.zip
+      unzip_file(file: file, destination: shield_unzip_path)
+      # remove swiftshield.zip
+      UI.message "Removing file at path: #{shield_zip_path}"
+      File.delete(shield_zip_path) if File.exist?(shield_zip_path)
+    end
+  end
+
+  # gets obfuscator download URL from the latest release on Github
+  def get_github_obfuscator_asset_download_url
+    auth = {:username => GITHUB_USER, :password => GITHUB_TOKEN}
+    response = HTTParty.get('https://api.github.com/repos/rockbruno/swiftshield/releases/latest', :basic_auth => auth)
+    parsed_response_json = JSON.parse(response.body)
+
+    assets = parsed_response_json["assets"]
+
+    shield_asset = assets.find { |asset| asset["name"].include? "swiftshield.zip" }
+
+    if shield_asset != nil
+      shield_asset_download_url = shield_asset["browser_download_url"]
+      UI.message "Got asset download url: #{shield_asset_download_url}"
+      return shield_asset_download_url
+    else
+      UI.message "Could not find asset nstack-translations-generator.bundle.zip attached to the release"
+      # restore replaced files to default
+      exit
+    end
+
+  end
+
+  # MARK: - Unzip
+
+  def unzip_file(file:, destination:)
+      ::Zip::File.open(file) do |zip_file|
+        puts " -> Unzipping #{zip_file}"
+          zip_file.each do |file|
+            file_path = File.join(destination, file.name)
+            UI.message "Unzipping file at #{file_path}"
+            # extract file and replace if needed
+            zip_file.extract(file, file_path) { true }
+          end
+      end
+  end
+
+  # ---------------------------------------
+  # Sign Project
+  # ---------------------------------------
+
+  # signs project with Nodes enterprise certificates
+  def sign_with_nodes_enterprise(target, options, workspace)
+
+    # Certificates and profiles
+    UI.message "Installing Nodes Enterprise certificate and profiles"
+    sign_project(
+      runs_match: true,
+      git_branch: DEFAULT_ENTERPRISE_BRANCH,
+      type: "enterprise",
+      app_identifier: "*",
+      xcodeproj: options['xcodeproj'],
+      target: target,
+      team_id: DEFAULT_ENTERPRISE_TEAM,
+      profile_path: 'sigh_*_enterprise_profile-path',
+      code_signing_identity: "iPhone Distribution: Nodes Aps"
+    )
+
+  end
+
+  # signs project with Nodes enterprise certificates
+  def sign_with_matchfile_enterprise(target, options, workspace)
+    path_env_var = "sigh_#{bundle_id}_#{export_method_match}_profile-path"
+    team_env_var = "sigh_#{bundle_id}_#{export_method_match}_team-id"
+
+    # Certificates and profiles
+    UI.message "Installing Matchile Enterprise certificate and profiles"
+    sign_project(
+      runs_match: true,
+      git_branch: options["match-git-branch"],
+      type: "enterprise",
+      app_identifier: "*",
+      xcodeproj: options['xcodeproj'],
+      target: target,
+      team_id: ENV["#{team_env_var}"],
+      profile_path: path_env_var,
+      code_signing_identity: nil
+    )
+
+  end
+
+  def sign_with_matchfile_appstore(target, options, workspace, bundle_id)
+      path_env_var = "sigh_#{bundle_id}_appstore_profile-path"
+      team_env_var = "sigh_#{bundle_id}_appstore_team-id"
+
+      # Certificates and profiles
+      UI.message "Installing Matchile AppStore certificate and profiles"
+      UI.message "Profile path is #{path_env_var}"
+      profile = ENV["#{path_env_var}"]
+      UI.message "Profile is #{profile}"
+      sign_project(
+        runs_match: true,
+        git_branch: options["match-git-branch"],
+        type: "appstore",
+        app_identifier: bundle_id,
+        xcodeproj: options['xcodeproj'],
+        target: target,
+        team_id: ENV["#{team_env_var}"],
+        profile_path: path_env_var,
+        code_signing_identity: nil
+      )
+
+  end
+
+  # ---------------------------------------
+  # Runs fastlane match
+  # Turns off Automatic Signing
+  # Updates Provisioning Profile
+  # ---------------------------------------
+
+  def sign_project(runs_match:, git_branch:, type:, app_identifier:, xcodeproj:, target:, team_id:, profile_path:, code_signing_identity:)
+
+    # Turns off Automatic Signing
+    UI.message "Disabling automatic code signing"
+    disable_automatic_code_signing(
+      path: xcodeproj,
+      targets: target,
+      team_id: team_id
+    )
+
+    # Runs fastlane match
+    if runs_match
+      UI.message "Installing Certificates -> Running fastlane match"
+      match(
+        git_url: DEFAULT_MATCH_REPO,
+        git_branch: git_branch,
+        type: type,
+        app_identifier: app_identifier,
+        team_id: team_id,
+        readonly: true
+      )
+    else
+      UI.message "Skipping Installing Certificates"
+    end
+
+    # Set provisioning profile
+    UI.message "Setting provisioning profile path to #{profile_path}"
+    UI.message "Setting provisioning profile to #{ENV["#{profile_path}"]}"
+    update_project_provisioning(
+      xcodeproj: xcodeproj,
+      target_filter: "^#{target}$",
+      profile: ENV["#{profile_path}"],
+      code_signing_identity: "iPhone Distribution: Nodes Aps"
+    )
+
+  end
+
+  def resignAndExport(target, options, workspace, project, archive_path)
+
+    UI.header "Re-exporting archive without bitcode"
+    second_path = gym(
+      workspace: workspace,
+      project: project,
+      scheme: options['scheme'],
+      output_name: "#{options['scheme']}-hockey",
+      configuration: options['configuration'],
+      include_bitcode: false,
+      skip_build_archive: true,
+      archive_path: archive_path
+    )
+    UI.message "Generated non-bitcode IPA at: #{second_path}"
+
+
+    # Hockey
+    # ----------
+    UI.message "Installing certificate and profiles"
+        match(
+          git_url: DEFAULT_MATCH_REPO,
+          git_branch: DEFAULT_ENTERPRISE_BRANCH,
+          type: "enterprise",
+          app_identifier: "*",
+          team_id: DEFAULT_ENTERPRISE_TEAM,
+          readonly: true
+        )
+
+    UI.message "Creating Hockey build"
+
+    resign(
+      ipa: second_path,
+      signing_identity: "iPhone Distribution: Nodes Aps",
+      provisioning_profile: ENV['sigh_*_enterprise_profile-path'],
+      use_app_entitlements: false,
+      verbose: true
+    )
+
+    UI.success "Hockey IPA at: #{second_path}"
+    return second_path
   end
 
   def get_team_name(profile)
