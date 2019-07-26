@@ -201,8 +201,6 @@ platform :ios do
     testflight_upload_enabled = ENV['TESTFLIGHT_UPLOAD_FLAG'] == '1'
     hockey_upload_enabled = ENV['HOCKEY_UPLOAD_FLAG'] == '1'
     export_config = ENV['EXPORT_CONFIG']
-    UI.header "EXPORT CONFIG IS #{export_config}"
-    UI.header "EXPORT CONFIG IS #{ENV['EXPORT_CONFIG']}"
 
     # Obfuscation
     #------------
@@ -216,9 +214,6 @@ platform :ios do
     if export_config == "enterprise"
 
       UI.header "EXPORT CONFIG IS ENTERTERPRISE"
-      UI.header "EXPORT CONFIG IS ENTERTERPRISE"
-      UI.header "EXPORT CONFIG IS ENTERTERPRISE"
-      UI.header "EXPORT CONFIG IS ENTERTERPRISE"
 
       # Hockey
       # ----------
@@ -228,6 +223,8 @@ platform :ios do
       end
 
     else
+
+      UI.header "EXPORT CONFIG IS DEFAULT"
 
       # Testflight
       # ----------
@@ -308,6 +305,9 @@ platform :ios do
       UI.message "Testflight archive already created, skipping hockey build and re-exporting instead"
       return resignAndExport(target, options, workspace, project, archive_path)
     else
+      extensions_ids = options["extensions-bundle-ids"] ||= Hash.new
+      UI.user_error!("TestFlight needs to be enabled if you are having App Extensions or you need to use a custom Enterprise certificate to sign and use the export-configuration: \'enterprise\' in Project.yml") unless extensions_ids.empty?
+
       sign_with_nodes_enterprise(target, options, workspace)
     end
 
