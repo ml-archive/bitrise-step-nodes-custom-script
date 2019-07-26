@@ -104,7 +104,7 @@ platform :ios do
   end
 
   lane :deploy_testflight do |options|
-    unless ENV['TESTFLIGHT_UPLOAD_FLAG'] == '0'
+    unless ENV['TESTFLIGHT_UPLOAD_FLAG'] == '0' || ENV['EXPORT_CONFIG'] == "enterprise"
       file = File.read('deploy_config.json')
       $deploy_config = JSON.parse file
       UI.message "Deploy config: #{pp $deploy_config}"
@@ -201,6 +201,8 @@ platform :ios do
     testflight_upload_enabled = ENV['TESTFLIGHT_UPLOAD_FLAG'] == '1'
     hockey_upload_enabled = ENV['HOCKEY_UPLOAD_FLAG'] == '1'
     export_config = ENV['EXPORT_CONFIG']
+    UI.header "EXPORT CONFIG IS #{export_config}"
+    UI.header "EXPORT CONFIG IS #{ENV['EXPORT_CONFIG']}"
 
     # Obfuscation
     #------------
@@ -212,6 +214,11 @@ platform :ios do
     end
 
     if export_config == "enterprise"
+
+      UI.header "EXPORT CONFIG IS ENTERTERPRISE"
+      UI.header "EXPORT CONFIG IS ENTERTERPRISE"
+      UI.header "EXPORT CONFIG IS ENTERTERPRISE"
+      UI.header "EXPORT CONFIG IS ENTERTERPRISE"
 
       # Hockey
       # ----------
@@ -328,9 +335,10 @@ platform :ios do
   def build_hockey_matchfile_certificate(target, options, workspace, project)
     UI.header "Starting Hockey build"
 
-    sign_with_matchfile_certificate(target, options, workspace, "*", "enterprise")
+    sign_with_matchfile_certificate(target, options, workspace, options['bundle_id'], "enterprise")
     sign_app_extensions(target, options, workspace, project, "enterprise")
 
+    archive_path = "#{Dir.pwd}/../archive.xcarchive"
     team_env_var = "sigh_#{options['bundle_id']}_enterprise_team-id"
     team_id = ENV["#{team_env_var}"]
 
