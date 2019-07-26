@@ -200,6 +200,7 @@ platform :ios do
 
     testflight_upload_enabled = ENV['TESTFLIGHT_UPLOAD_FLAG'] == '1'
     hockey_upload_enabled = ENV['HOCKEY_UPLOAD_FLAG'] == '1'
+    export_config = ENV['EXPORT_CONFIG']
 
     # Obfuscation
     #------------
@@ -210,35 +211,35 @@ platform :ios do
       UI.header "Skipping obfuscating step. Values is #{ENV['OBFUSCATE_CODE']}"
     end
 
-    # Testflight
-    # ----------
+    if export_config == "enterprise"
 
-    if testflight_upload_enabled
-      testflight_ipa = buildAppStore(target, options, workspace, project)
-    end
+      # Hockey
+      # ----------
 
-    # Hockey
-    # ----------
-
-    if hockey_upload_enabled || testflight_upload_enabled
-        hockey_ipa = buildHockey(target, options, workspace, project)
-    end
-
-    # If for some reason the get_team_name doesnt work, you can manually specify it
-    team_name = options["team-name"]
-    if team_name.nil?
-      if testflight_upload_enabled
-        bundle_id = options['bundle_id']
-        export_method = "app-store"
-        export_method_match = export_method.gsub('-', '')
-        path_env_var = "sigh_#{bundle_id}_#{export_method_match}_profile-path"
-        team_env_var = "sigh_#{bundle_id}_#{export_method_match}_team-id"
-        provisioning_profile_path = ENV["#{path_env_var}"]
-        team_name = get_team_name(provisioning_profile_path)
-      else
-        team_name = DEFAULT_ENTERPRISE_TEAM
+      if hockey_upload_enabled
+        hockey_ipa = build_hockey_matchfile_certificate(target, options, workspace, project)
       end
+
+    else
+
+      # Testflight
+      # ----------
+
+      if testflight_upload_enabled
+        testflight_ipa = buildAppStore(target, options, workspace, project)
+      end
+
+      # Hockey
+      # ----------
+
+      if hockey_upload_enabled || testflight_upload_enabled
+          hockey_ipa = build_hockey_nodes_enterprise(target, options, workspace, project)
+      end
+
+      team_name = set_team_name(options, export_config, testflight_upload_enabled)
+
     end
+
 
     $deploy_config << {
       'testflight_ipa' => testflight_ipa,
@@ -267,11 +268,30 @@ platform :ios do
     UI.success "Successfully built everything."
   end
 
+  def set_team_name(options, export_config, testflight_upload_enabled)
+    team_name = options["team-name"]
+    if team_name.nil?
+      if export_config == "enterprise" || testflight_upload_enabled
+
+        export_method_match = export_config == "enterprise" ? "enterprise" : "appstore"
+        bundle_id = export_config == "enterprise" ? "*" : options['bundle_id']
+
+        path_env_var = "sigh_#{bundle_id}_#{export_method_match}_profile-path"
+        team_env_var = "sigh_#{bundle_id}_#{export_method_match}_team-id"
+        provisioning_profile_path = ENV["#{path_env_var}"]
+
+        return get_team_name(provisioning_profile_path)
+      else
+        return DEFAULT_ENTERPRISE_TEAM
+      end
+    end
+  end
+
   # ---------------------------------------
   # Build Hockey
   # ---------------------------------------
 
-  def buildHockey(target, options, workspace, project)
+  def build_hockey_nodes_enterprise(target, options, workspace, project)
     UI.header "Starting Hockey build"
 
     archive_path = "#{Dir.pwd}/../archive.xcarchive"
@@ -305,6 +325,34 @@ platform :ios do
     return ipa_path
   end
 
+  def build_hockey_matchfile_certificate(target, options, workspace, project)
+    UI.header "Starting Hockey build"
+
+    sign_with_matchfile_certificate(target, options, workspace, "*", "enterprise")
+    sign_app_extensions(target, options, workspace, project, "enterprise")
+
+    team_env_var = "sigh_#{options['bundle_id']}_enterprise_team-id"
+    team_id = ENV["#{team_env_var}"]
+
+    UI.message "Creating Hockey build without bitcode and entitlements"
+    ipa_path = gym(
+      workspace: workspace,
+      project: project,
+      scheme: options['scheme'],
+      output_name: "#{options['scheme']}-hockey",
+      configuration: options['configuration'],
+      include_bitcode: true,
+      xcargs: "CODE_SIGN_ENTITLEMENTS=''",
+      archive_path: archive_path,
+      export_method: "enterprise",
+      export_team_id: team_id
+    )
+
+    UI.message "Generated Hockey IPA at: #{ipa_path}"
+
+    return ipa_path
+  end
+
   # ---------------------------------------
   # Build AppStore
   # ---------------------------------------
@@ -312,17 +360,9 @@ platform :ios do
   def buildAppStore(target, options, workspace, project)
     UI.header "Starting TestFlight build"
     UI.header "SIGN for #{options['bundle_id']}"
-    sign_with_matchfile_appstore(target, options, workspace, options['bundle_id'])
 
-    # Install certificates and profiles for extensions
-    extensions_ids = options["extensions-bundle-ids"] ||= Hash.new
-    unless extensions_ids.empty?
-      extensions_ids.each_pair do |ext_target, ext_id|
-        UI.header "SIGN for #{ext_id}"
-        UI.message "Installing certificate and profiles for extension: #{ext_id}"
-        sign_with_matchfile_appstore(ext_target, options, workspace, ext_id)
-      end
-    end
+    sign_with_matchfile_certificate(target, options, workspace, options['bundle_id'], "appstore")
+    sign_app_extensions(target, options, workspace, project, "appstore")
 
     # Build
     UI.message "Creating Testflight build"
@@ -356,6 +396,18 @@ platform :ios do
     UI.message "Generated TestFlight IPA at: #{ipa_path}"
 
     return ipa_path
+  end
+
+  def sign_app_extensions(target, options, workspace, project, export_method_match)
+    # Install certificates and profiles for extensions
+    extensions_ids = options["extensions-bundle-ids"] ||= Hash.new
+    unless extensions_ids.empty?
+      extensions_ids.each_pair do |ext_target, ext_id|
+        UI.header "SIGN for #{ext_id}"
+        UI.message "Installing certificate and profiles for extension: #{ext_id}"
+        sign_with_matchfile_certificate(ext_target, options, workspace, ext_id, export_method_match)
+      end
+    end
   end
 
   # ---------------------------------------
@@ -439,6 +491,7 @@ platform :ios do
 
     # Certificates and profiles
     UI.message "Installing Nodes Enterprise certificate and profiles"
+
     sign_project(
       runs_match: true,
       git_branch: DEFAULT_ENTERPRISE_BRANCH,
@@ -453,40 +506,18 @@ platform :ios do
 
   end
 
-  # signs project with Nodes enterprise certificates
-  def sign_with_matchfile_enterprise(target, options, workspace)
+  # signs project with certificates from matchfile
+  def sign_with_matchfile_certificate(target, options, workspace, bundle_id, export_method_match)
     path_env_var = "sigh_#{bundle_id}_#{export_method_match}_profile-path"
     team_env_var = "sigh_#{bundle_id}_#{export_method_match}_team-id"
 
-    # Certificates and profiles
-    UI.message "Installing Matchile Enterprise certificate and profiles"
-    sign_project(
-      runs_match: true,
-      git_branch: options["match-git-branch"],
-      type: "enterprise",
-      app_identifier: "*",
-      xcodeproj: options['xcodeproj'],
-      target: target,
-      team_id: ENV["#{team_env_var}"],
-      profile_path: path_env_var,
-      code_signing_identity: nil
-    )
-
-  end
-
-  def sign_with_matchfile_appstore(target, options, workspace, bundle_id)
-      path_env_var = "sigh_#{bundle_id}_appstore_profile-path"
-      team_env_var = "sigh_#{bundle_id}_appstore_team-id"
-
       # Certificates and profiles
-      UI.message "Installing Matchile AppStore certificate and profiles"
-      UI.message "Profile path is #{path_env_var}"
-      profile = ENV["#{path_env_var}"]
-      UI.message "Profile is #{profile}"
+      UI.message "Installing Matchile #{export_method_match} certificate and profiles"
+
       sign_project(
         runs_match: true,
         git_branch: options["match-git-branch"],
-        type: "appstore",
+        type: export_method_match,
         app_identifier: bundle_id,
         xcodeproj: options['xcodeproj'],
         target: target,
@@ -540,6 +571,11 @@ platform :ios do
 
   end
 
+  # ---------------------------------------
+  # Re-exports archive without bitcode
+  # Runs match with Nodes Enterprise
+  # Resigns project
+  # ---------------------------------------
   def resignAndExport(target, options, workspace, project, archive_path)
 
     UI.header "Re-exporting archive without bitcode"

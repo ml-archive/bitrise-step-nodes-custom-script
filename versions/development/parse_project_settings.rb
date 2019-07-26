@@ -69,7 +69,7 @@ project_settings = YAML.load_file(PROJECT_FILE_NAME)
 xcodeproj_path = project_settings['xcodeproj']
 configuration = project_settings["configuration"]
 PROJECT_ROOT_DIR = File.dirname(xcodeproj_path) + "/"
-export_config = project_settings['export-configuration'] ||= "normal"
+export_config = project_settings['export-configuration'] ||= "default"
 ci_version = project_settings['ci-version']
 
 # Load Xcode project
