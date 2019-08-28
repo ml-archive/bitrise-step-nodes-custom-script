@@ -384,6 +384,29 @@ platform :ios do
       code_signing_identity: "iPhone Distribution: Nodes Aps"
     )
 
+    # Install certificates and profiles for extensions
+    extensions_ids = options["extensions-bundle-ids"] ||= Hash.new
+    unless extensions_ids.empty?
+      extensions_ids.each_pair do |ext_target, ext_id|
+        UI.message "Installing enterprise certificate and profiles for extension: #{ext_id}"
+
+        UI.message "Switching to manual code signing for extension: #{ext_id}"
+        disable_automatic_code_signing(
+          path: options['xcodeproj'],
+          targets: ext_target,
+          team_id: DEFAULT_ENTERPRISE_TEAM
+        )
+
+        UI.message "Setting provisioning profile for extension: #{ext_id}"
+        update_project_provisioning(
+          xcodeproj: options['xcodeproj'],
+          target_filter: "^#{ext_target}$",
+          profile: ENV['sigh_*_enterprise_profile-path'],
+          code_signing_identity: "iPhone Distribution: Nodes Aps"
+        )
+      end
+    end
+
   end
 
   def buildHockey(target, options, workspace, project)
