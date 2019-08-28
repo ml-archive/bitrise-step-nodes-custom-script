@@ -98,6 +98,8 @@ puts green "|- Settings loaded succesfully with configuration: #{project_setting
 # Load upload settings
 hockey_upload = project_settings['hockey-upload'] ? 1 : 0
 testflight_upload = project_settings['testflight-upload'] ? 1 : 0
+opfucaste_code_for_archive = project_settings['obfuscate'] ? 1 : 0
+
 puts ""
 puts bold "Checking upload settings"
 if hockey_upload == 1
@@ -110,7 +112,11 @@ if testflight_upload == 1
 else
   puts yellow "|- Skipping testflight upload"
 end
-
+if opfucaste_code_for_archive == 1
+  puts green "|- Will obfuscate code"
+else
+  puts yellow "|- Skipping code obfuscation"
+end
 
 # Get available targets
 validated_targets = Hash.new
@@ -297,7 +303,7 @@ system "bitrise envman add --key EXPORT_METHOD --value #{export_method} --no-exp
 system "bitrise envman add --key HOCKEY_UPLOAD_FLAG --value '#{hockey_upload}' --no-expand" unless DEBUG_MODE
 system "bitrise envman add --key TESTFLIGHT_UPLOAD_FLAG --value '#{testflight_upload}' --no-expand" unless DEBUG_MODE
 system "bitrise envman add --key SLACK_CHANNEL --value '#{project_settings['slack-channel']}' --no-expand " unless DEBUG_MODE
+system "bitrise envman add --key OBFUSCATE_CODE --value '#{opfucaste_code_for_archive}' --no-expand " unless DEBUG_MODE
 system "bitrise envman add --key CI_VERSION --value '#{ci_version}' --no-expand " unless DEBUG_MODE
-system "bitrise envman add --key OBFUSCATE_CODE --value '#{project_settings['obfuscate']}' --no-expand " unless DEBUG_MODE
 puts green "|- Succesfully generated build config."
 pp build_config unless not VERBOSE
