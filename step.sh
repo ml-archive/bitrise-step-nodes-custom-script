@@ -8,13 +8,15 @@ DEFAULT_CI_VERSION='1.2'
 CI_PROJECT_FILE="project.yml"
 CI_VERSION_REGEX="ci-version: \"([0-9.]+)\""
 
-if [[ `cat project.yml` =~ $CI_VERSION_REGEX ]]; then
-	# Parse the CI version from the project.yml
+if [[ ( -z "${CI_VERSION}" ) && ( `cat project.yml` =~ $CI_VERSION_REGEX ) ]]; then
+	# Parse the CI version from the project.yml, unless set by environment
 	CI_VERSION=${BASH_REMATCH[1]}
 elif [[ -z "${CI_VERSION}" ]]; then
-	# Fallback to a default version if not set by environment variable
+	# Fallback to a default version if not set by environment variable or in project.yml
 	CI_VERSION=$DEFAULT_CI_VERSION
 fi
+
+echo "Using Nodes CI version: ${CI_VERSION}"
 
 copyFastfile()
 {
