@@ -2,7 +2,19 @@
 set -ex
 
 THIS_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Handle CI Version
 DEFAULT_CI_VERSION='1.2'
+CI_PROJECT_FILE="project.yml"
+CI_VERSION_REGEX="ci-version: \"([0-9.]+)\""
+
+if [[ `cat project.yml` =~ $CI_VERSION_REGEX ]]; then
+	# Parse the CI version from the project.yml
+	CI_VERSION=${BASH_REMATCH[1]}
+elif [[ -z "${CI_VERSION}" ]]; then
+	# Fallback to a default version if not set by environment variable
+	CI_VERSION=$DEFAULT_CI_VERSION
+fi
 
 copyFastfile()
 {
@@ -11,13 +23,7 @@ copyFastfile()
 		mkdir $PWD/fastlane
 	fi
 
-	# Check if we have ci-version set correctly
-	if [ -z "${CI_VERSION}" ]; then
-		# not set, fallback to default
-		CI_VERSION=$DEFAULT_CI_VERSION
-	fi
-
-		# Try to load fastile for the correct CI version
+	# Try to load fastile for the correct CI version
 	if [ -e "${THIS_SCRIPT_DIR}/versions/${CI_VERSION}/Fastfile" ]; then
 		cp "${THIS_SCRIPT_DIR}/versions/${CI_VERSION}/Fastfile" $PWD/fastlane
 	else
@@ -47,12 +53,6 @@ if [ "${script_input}" == 'Fastlane copy' ]; then
 elif [ "${script_input}" == 'Prep Slack message' ]; then
 	copyFastfile
 else
-	# Check if we have ci-version set correctly
-	if [ -z "${CI_VERSION}" ]; then
-		# not set, fallback to default CI version
-		CI_VERSION=$DEFAULT_CI_VERSION
-	fi
-
 	# Try to load fastile for the correct CI version
 	if [ -e "${THIS_SCRIPT_DIR}/versions/${CI_VERSION}/parse_project_settings.rb" ]; then
 		gem install hockeyver
