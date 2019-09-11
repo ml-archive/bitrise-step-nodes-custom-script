@@ -494,7 +494,7 @@ platform :ios do
   # ---------------------------------------
 
   # signs project with Nodes enterprise certificates
-  def sign_with_nodes_enterprise(target, options, workspace, extension_ids)
+  def sign_with_nodes_enterprise(target, options, workspace, extensions_ids)
 
     # Certificates and profiles
     UI.message "Installing Nodes Enterprise certificate and profiles"
