@@ -2,7 +2,7 @@
 set -ex
 
 THIS_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-DEFAULT_CI_VERSION='development'
+DEFAULT_CI_VERSION='1.2'
 
 copyFastfile()
 {
