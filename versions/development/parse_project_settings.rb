@@ -92,11 +92,10 @@ unless avialable_configurations.include? configuration
 end
 
 # Notify
-puts green "|- Settings loaded succesfully with configuration: #{project_settings["configuration"]}."
-puts green "|- Settings loaded succesfully with export-configuration: #{project_settings["export-configuration"]}."
+puts green "|- Settings loaded succesfully with configuration: #{project_settings["configuration"]} and export method: #{project_settings["export-method"]}."
 
 # Load upload settings
-export_config = project_settings['export-configuration']
+export_method = project_settings['export-method']
 hockey_upload = project_settings['hockey-upload'] ? 1 : 0
 testflight_upload = project_settings['testflight-upload'] ? 1 : 0
 obfucaste_code_for_archive = project_settings['obfuscate'] ? 1 : 0
@@ -300,7 +299,7 @@ validated_targets.each_pair { |key, val|
 
 # Save to env
 system "bitrise envman add --key BUILD_CONFIG --value '#{build_config.to_json}' --no-expand" unless DEBUG_MODE
-system "bitrise envman add --key EXPORT_CONFIG --value '#{export_config}' --no-expand" unless DEBUG_MODE
+system "bitrise envman add --key EXPORT_METHOD --value '#{export_method}' --no-expand" unless DEBUG_MODE
 system "bitrise envman add --key HOCKEY_UPLOAD_FLAG --value '#{hockey_upload}' --no-expand" unless DEBUG_MODE
 system "bitrise envman add --key TESTFLIGHT_UPLOAD_FLAG --value '#{testflight_upload}' --no-expand" unless DEBUG_MODE
 system "bitrise envman add --key SLACK_CHANNEL --value '#{project_settings['slack-channel']}' --no-expand " unless DEBUG_MODE

@@ -104,7 +104,7 @@ platform :ios do
   end
 
   lane :deploy_testflight do |options|
-    unless ENV['TESTFLIGHT_UPLOAD_FLAG'] == '0' || ENV['EXPORT_CONFIG'] == "enterprise"
+    unless ENV['TESTFLIGHT_UPLOAD_FLAG'] == '0' || ENV['EXPORT_METHOD'] == "enterprise"
       file = File.read('deploy_config.json')
       $deploy_config = JSON.parse file
       UI.message "Deploy config: #{pp $deploy_config}"
@@ -186,7 +186,9 @@ platform :ios do
 
   def build(target, options)
     scheme = options['scheme']
-    UI.header "Building #{target} with scheme #{scheme} in #{options['configuration']} configuration."
+    export_method = ENV['EXPORT_METHOD']
+
+    UI.header "Building #{target} with scheme #{scheme} in #{options['configuration']} configuration and export method #{export_method}."
 
     # Fastlane wont let you pass both a workspace and project
     workspace = options['workspace']
@@ -200,20 +202,19 @@ platform :ios do
 
     testflight_upload_enabled = ENV['TESTFLIGHT_UPLOAD_FLAG'] == '1'
     hockey_upload_enabled = ENV['HOCKEY_UPLOAD_FLAG'] == '1'
-    export_config = ENV['EXPORT_CONFIG']
 
     # Obfuscation
     #------------
     if ENV['OBFUSCATE_CODE'] == "1"
-      UI.header "Running obfuscating step. Values is #{ENV['OBFUSCATE_CODE']}"
+      UI.header "Running obfuscating step."
       obfuscate(target, options, workspace, project, scheme)
     else
-      UI.header "Skipping obfuscating step. Values is #{ENV['OBFUSCATE_CODE']}"
+      UI.header "Skipping obfuscating step."
     end
 
-    if export_config == "enterprise"
+    if export_method == "enterprise"
 
-      UI.header "EXPORT CONFIG IS ENTERTERPRISE"
+      UI.header "Export method is: Enterprise"
 
       # Hockey
       # ----------
@@ -224,7 +225,7 @@ platform :ios do
 
     else
 
-      UI.header "EXPORT CONFIG IS DEFAULT"
+      UI.header "Export method is: Default"
 
       # Testflight
       # ----------
@@ -240,7 +241,7 @@ platform :ios do
           hockey_ipa = build_hockey_nodes_enterprise(target, options, workspace, project)
       end
 
-      team_name = set_team_name(options, export_config, testflight_upload_enabled)
+      team_name = set_team_name(options, export_method, testflight_upload_enabled)
 
     end
 
@@ -272,13 +273,13 @@ platform :ios do
     UI.success "Successfully built everything."
   end
 
-  def set_team_name(options, export_config, testflight_upload_enabled)
+  def set_team_name(options, export_method, testflight_upload_enabled)
     team_name = options["team-name"]
     if team_name.nil?
-      if export_config == "enterprise" || testflight_upload_enabled
+      if export_method == "enterprise" || testflight_upload_enabled
 
-        export_method_match = export_config == "enterprise" ? "enterprise" : "appstore"
-        bundle_id = export_config == "enterprise" ? "*" : options['bundle_id']
+        export_method_match = export_method == "enterprise" ? "enterprise" : "appstore"
+        bundle_id = export_method == "enterprise" ? "*" : options['bundle_id']
 
         path_env_var = "sigh_#{bundle_id}_#{export_method_match}_profile-path"
         team_env_var = "sigh_#{bundle_id}_#{export_method_match}_team-id"
@@ -306,9 +307,7 @@ platform :ios do
       return resignAndExport(target, options, workspace, project, archive_path)
     else
       extensions_ids = options["extensions-bundle-ids"] ||= Hash.new
-      UI.user_error!("TestFlight needs to be enabled if you are having App Extensions or you need to use a custom Enterprise certificate to sign and use the export-configuration: \'enterprise\' in Project.yml") unless extensions_ids.empty?
-
-      sign_with_nodes_enterprise(target, options, workspace)
+      sign_with_nodes_enterprise(target, options, workspace, extensions_ids)
     end
 
     UI.message "Creating Hockey build without bitcode and entitlements"
@@ -495,7 +494,7 @@ platform :ios do
   # ---------------------------------------
 
   # signs project with Nodes enterprise certificates
-  def sign_with_nodes_enterprise(target, options, workspace)
+  def sign_with_nodes_enterprise(target, options, workspace, extension_ids)
 
     # Certificates and profiles
     UI.message "Installing Nodes Enterprise certificate and profiles"
@@ -512,6 +511,25 @@ platform :ios do
       code_signing_identity: "iPhone Distribution: Nodes Aps"
     )
 
+    # Sign extensions as well
+    
+    unless extensions_ids.empty?
+      extensions_ids.each_pair do |ext_target, ext_id|
+        UI.message "Installing enterprise certificate and profiles for extension: #{ext_id}"
+
+        sign_project(
+          runs_match: false,
+          git_branch: DEFAULT_ENTERPRISE_BRANCH,
+          type: "enterprise",
+          app_identifier: "*",
+          xcodeproj: options['xcodeproj'],
+          target: ext_target,
+          team_id: DEFAULT_ENTERPRISE_TEAM,
+          profile_path: 'sigh_*_enterprise_profile-path',
+          code_signing_identity: "iPhone Distribution: Nodes Aps"
+        )
+      end
+    end
   end
 
   # signs project with certificates from matchfile
