@@ -365,7 +365,6 @@ platform :ios do
 
   def buildAppStore(target, options, workspace, project)
     UI.header "Starting TestFlight build"
-    UI.header "SIGN for #{options['bundle_id']}"
 
     sign_with_matchfile_certificate(target, options, workspace, options['bundle_id'], "appstore")
     sign_app_extensions(target, options, workspace, project, "appstore")
@@ -407,7 +406,6 @@ platform :ios do
     extensions_ids = options["extensions-bundle-ids"] ||= Hash.new
     unless extensions_ids.empty?
       extensions_ids.each_pair do |ext_target, ext_id|
-        UI.header "SIGN for #{ext_id}"
         UI.message "Installing certificate and profiles for extension: #{ext_id}"
         sign_with_matchfile_certificate(ext_target, options, workspace, ext_id, export_method_match)
       end
@@ -546,7 +544,7 @@ platform :ios do
         target: target,
         team_id: ENV["#{team_env_var}"],
         profile_path: path_env_var,
-        code_signing_identity: nil
+        code_signing_identity: "iPhone Distribution"
       )
 
   end
