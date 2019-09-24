@@ -163,7 +163,7 @@ platform :ios do
       UI.message "Error"
       slack(
         message: error,
-        channel: "spam",
+        channel: "ios-ci",
         success: false,
         username: "iOS CI",
         payload: {
@@ -507,7 +507,7 @@ platform :ios do
     )
 
     # Sign extensions as well
-    
+
     unless extensions_ids.empty?
       extensions_ids.each_pair do |ext_target, ext_id|
         UI.message "Installing enterprise certificate and profiles for extension: #{ext_id}"

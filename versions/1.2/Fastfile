@@ -163,7 +163,7 @@ platform :ios do
       UI.message "Error"
       slack(
         message: error,
-        channel: "spam",
+        channel: "ios-ci",
         success: false,
         username: "iOS CI",
         payload: {
