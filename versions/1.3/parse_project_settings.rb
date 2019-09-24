@@ -188,7 +188,7 @@ unless DEBUG_MODE
 
     plist = Plist.parse_xml info_plist_path
     xcode_version = plist["CFBundleShortVersionString"]
-    xcode_build = plist["CFBundleVersion"].to_i
+    xcode_build = configs[index].build_settings["CURRENT_PROJECT_VERSION"].to_i ||= plist["CFBundleVersion"].to_i
 
     puts "|- Verifying '#{key}' with version #{xcode_version} (#{xcode_build})."
 
