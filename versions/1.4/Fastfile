@@ -341,7 +341,7 @@ platform :ios do
     team_env_var = "sigh_#{options['bundle_id']}_enterprise_team-id"
     team_id = ENV["#{team_env_var}"]
 
-    UI.message "Creating Hockey build with custom enterprise settings and entitlements"
+    UI.message "Creating Hockey build without bitcode and entitlements"
     ipa_path = gym(
       workspace: workspace,
       project: project,
@@ -349,6 +349,7 @@ platform :ios do
       output_name: "#{options['scheme']}-hockey",
       configuration: options['configuration'],
       include_bitcode: true,
+      xcargs: "CODE_SIGN_ENTITLEMENTS=''",
       archive_path: archive_path,
       export_method: "enterprise",
       export_team_id: team_id
@@ -365,6 +366,7 @@ platform :ios do
 
   def buildAppStore(target, options, workspace, project)
     UI.header "Starting TestFlight build"
+    UI.header "SIGN for #{options['bundle_id']}"
 
     sign_with_matchfile_certificate(target, options, workspace, options['bundle_id'], "appstore")
     sign_app_extensions(target, options, workspace, project, "appstore")
@@ -386,6 +388,8 @@ platform :ios do
     team_env_var = "sigh_#{options['bundle_id']}_appstore_team-id"
     team_id = ENV["#{team_env_var}"]
 
+    UI.header "There goes GYM"
+
     ipa_path = gym(
       workspace: workspace,
       project: project,
@@ -406,6 +410,7 @@ platform :ios do
     extensions_ids = options["extensions-bundle-ids"] ||= Hash.new
     unless extensions_ids.empty?
       extensions_ids.each_pair do |ext_target, ext_id|
+        UI.header "SIGN for #{ext_id}"
         UI.message "Installing certificate and profiles for extension: #{ext_id}"
         sign_with_matchfile_certificate(ext_target, options, workspace, ext_id, export_method_match)
       end
@@ -544,7 +549,7 @@ platform :ios do
         target: target,
         team_id: ENV["#{team_env_var}"],
         profile_path: path_env_var,
-        code_signing_identity: "iPhone Distribution"
+        code_signing_identity: nil
       )
 
   end
@@ -567,7 +572,7 @@ platform :ios do
 
     # Runs fastlane match
     if runs_match
-      UI.message "Installing certificates (running fastlane match)"
+      UI.message "Installing Certificates -> Running fastlane match"
       match(
         git_url: DEFAULT_MATCH_REPO,
         git_branch: git_branch,
@@ -577,17 +582,19 @@ platform :ios do
         readonly: true
       )
     else
-      UI.message "Skipping installing certificates"
+      UI.message "Skipping Installing Certificates"
     end
 
     # Set provisioning profile
     UI.message "Setting provisioning profile path to #{profile_path}"
+    UI.message "Setting provisioning profile to #{ENV["#{profile_path}"]}"
     update_project_provisioning(
       xcodeproj: xcodeproj,
       target_filter: "^#{target}$",
       profile: ENV["#{profile_path}"],
-      code_signing_identity: code_signing_identity
+      code_signing_identity: "iPhone Distribution: Nodes Aps"
     )
+
   end
 
   # ---------------------------------------
