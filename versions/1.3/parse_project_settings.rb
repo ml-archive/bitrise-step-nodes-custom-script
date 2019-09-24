@@ -69,7 +69,6 @@ project_settings = YAML.load_file(PROJECT_FILE_NAME)
 xcodeproj_path = project_settings['xcodeproj']
 configuration = project_settings["configuration"]
 PROJECT_ROOT_DIR = File.dirname(xcodeproj_path) + "/"
-export_method = project_settings['method'] ||= "app-store"
 ci_version = project_settings['ci-version']
 
 # Load Xcode project
@@ -93,12 +92,13 @@ unless avialable_configurations.include? configuration
 end
 
 # Notify
-puts green "|- Settings loaded succesfully with configuration: #{project_settings["configuration"]}."
+puts green "|- Settings loaded succesfully with configuration: #{project_settings["configuration"]} and export method: #{project_settings["export-method"]}."
 
 # Load upload settings
+export_method = project_settings['export-method']
 hockey_upload = project_settings['hockey-upload'] ? 1 : 0
 testflight_upload = project_settings['testflight-upload'] ? 1 : 0
-opfucaste_code_for_archive = project_settings['obfuscate'] ? 1 : 0
+obfucaste_code_for_archive = project_settings['obfuscate'] ? 1 : 0
 
 puts ""
 puts bold "Checking upload settings"
@@ -112,7 +112,7 @@ if testflight_upload == 1
 else
   puts yellow "|- Skipping testflight upload"
 end
-if opfucaste_code_for_archive == 1
+if obfucaste_code_for_archive == 1
   puts green "|- Will obfuscate code"
 else
   puts yellow "|- Skipping code obfuscation"
@@ -276,12 +276,10 @@ validated_targets.each_pair { |key, val|
       next
     end
 
-    # Bail if not an extension type (and not watch app)
+    # Bail if not an extension type
     unless extension_target.extension_target_type?
-      unless extension_target.sdk == "watchos"
-        puts yellow "Skipping extension with bundle id #{extension_id} as it is not an extension target."
-        next
-      end
+      puts yellow "Skipping extension with bundle id #{extension_id} as this target is not an extension target."
+      next
     end
 
     # Add validated ID to extensions hash
@@ -302,11 +300,11 @@ validated_targets.each_pair { |key, val|
 
 # Save to env
 system "bitrise envman add --key BUILD_CONFIG --value '#{build_config.to_json}' --no-expand" unless DEBUG_MODE
-system "bitrise envman add --key EXPORT_METHOD --value #{export_method} --no-expand" unless DEBUG_MODE
+system "bitrise envman add --key EXPORT_METHOD --value '#{export_method}' --no-expand" unless DEBUG_MODE
 system "bitrise envman add --key HOCKEY_UPLOAD_FLAG --value '#{hockey_upload}' --no-expand" unless DEBUG_MODE
 system "bitrise envman add --key TESTFLIGHT_UPLOAD_FLAG --value '#{testflight_upload}' --no-expand" unless DEBUG_MODE
 system "bitrise envman add --key SLACK_CHANNEL --value '#{project_settings['slack-channel']}' --no-expand " unless DEBUG_MODE
-system "bitrise envman add --key OBFUSCATE_CODE --value '#{opfucaste_code_for_archive}' --no-expand " unless DEBUG_MODE
+system "bitrise envman add --key OBFUSCATE_CODE --value '#{obfucaste_code_for_archive}' --no-expand " unless DEBUG_MODE
 system "bitrise envman add --key CI_VERSION --value '#{ci_version}' --no-expand " unless DEBUG_MODE
 puts green "|- Succesfully generated build config."
 pp build_config unless not VERBOSE
