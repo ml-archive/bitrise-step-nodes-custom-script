@@ -187,7 +187,7 @@ unless DEBUG_MODE
     info_plist_path = PROJECT_ROOT_DIR + info_plist
 
     plist = Plist.parse_xml info_plist_path
-    xcode_version = plist["CFBundleShortVersionString"]
+    xcode_version = configs[index].build_settings["MARKETING_VERSION"] ||= plist["CFBundleShortVersionString"]
     xcode_build_source = configs[index].build_settings["CURRENT_PROJECT_VERSION"] ||= plist["CFBundleVersion"]
     xcode_build = xcode_build_source.to_i
 
@@ -290,7 +290,7 @@ validated_targets.each_pair { |key, val|
   info_plist = val['target'].build_settings(configuration)["INFOPLIST_FILE"]
   info_plist_path = PROJECT_ROOT_DIR + info_plist
   plist = Plist.parse_xml info_plist_path
-  xcode_version = plist["CFBundleShortVersionString"]
+  xcode_version = val['target'].build_settings(configuration)["MARKETING_VERSION"] ||= plist["CFBundleShortVersionString"]
   xcode_build_source = val['target'].build_settings(configuration)["CURRENT_PROJECT_VERSION"] ||= plist["CFBundleVersion"]
   xcode_build = xcode_build_source.to_i
   content['xcode_version'] = "#{xcode_version}"
