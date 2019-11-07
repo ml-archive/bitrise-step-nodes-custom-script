@@ -1,0 +1,693 @@
+#!/usr/bin/env ruby
+
+fastlane_require 'json'
+fastlane_require 'pp'
+fastlane_require 'fileutils'
+fastlane_require 'zip'
+fastlane_require 'httparty'
+fastlane_require 'json'
+
+# Customise this file, documentation can be found here:
+# https://github.com/fastlane/fastlane/tree/master/fastlane/docs
+# All available actions: https://github.com/fastlane/fastlane/blob/master/fastlane/docs/Actions.md
+# can also be listed using the `fastlane actions` command
+
+# Change the syntax highlighting to Ruby
+# All lines starting with a # are ignored when running `fastlane`
+
+# If you want to automatically update fastlane if a new version is available:
+# update_fastlane
+
+# This is the minimum version number required.
+# Update this, if you use features of a newer version
+fastlane_version "2.38.0"
+default_platform :ios
+
+DEFAULT_USERNAME="ci@nodes.dk"
+DEFAULT_MATCH_REPO="git@github.com:nodes-projects/internal-certificates-ios.git"
+DEFAULT_ENTERPRISE_BRANCH="nodes-enterprise"
+DEFAULT_ENTERPRISE_TEAM="HW27H6H98R"
+GITHUB_USER="nodes-ci"
+GITHUB_TOKEN=ENV['GITHUB_TOKEN']
+
+$deploy_config = Array.new
+$notify_config = Array.new
+
+platform :ios do
+
+  # ---------------------------------------
+  # GENERAL
+  # ---------------------------------------
+
+  before_all do |lane, options|
+
+  end
+
+  after_all do |lane|
+    puts "After all, checking lane #{lane}"
+
+    if lane == :build
+     save_deploy_info
+    end
+  end
+
+  error do |lane, exception|
+    # Send error notification
+    addErrorMessage("Build failed in lane: #{lane} with message: \n #{exception}")
+  end
+
+  # ---------------------------------------
+  # LANES
+  # ---------------------------------------
+
+  lane :build do |options|
+    build_config = JSON.parse ENV['BUILD_CONFIG']
+    UI.message "Parsed config: #{pp build_config}"
+    build_config.each_pair do |target, target_config|
+      build(target, target_config)
+    end
+    save_notify_info
+  end
+
+  lane :deploy_hockey do |options|
+
+    if ENV['HOCKEY_UPLOAD_FLAG'] == '1' || ENV['TESTFLIGHT_UPLOAD_FLAG'] == '1'
+
+      $notify_config.clear
+      file = File.read('deploy_config.json')
+      $deploy_config = JSON.parse file
+
+      $deploy_config.each do |target|
+        UI.message "Starting hockey upload target #{target}"
+        hockey(
+          api_token: ENV['HOCKEY_API_TOKEN'],
+          ipa: target['hockey_ipa'],
+          dsym: target['hockey_dsym'],
+          notes: target['changelog'],
+          notify: "0",
+          public_identifier: target['hockey_app_id'],
+          bypass_cdn: true
+        )
+        info = lane_context[Actions::SharedValues::HOCKEY_BUILD_INFORMATION]
+        $notify_config << {
+          'scheme' => target['scheme'],
+          'configuration' => target['configuration'],
+          'xcode_version' => target['xcode_version'],
+          'xcode_build' => target['xcode_build'],
+          'hockey_link' => info['config_url']
+        }
+      end
+      save_notify_info
+    else
+      UI.important "Skipping hockey upload due to project.yml settings."
+    end
+  end
+
+  lane :deploy_firebase do |options|
+    $notify_config.clear
+    file = File.read('deploy_config.json')
+    $deploy_config = JSON.parse file
+    $deploy_config.each do |target|
+      firebase_app_distribution(
+        app: target['hockey_app_id'],
+        firebase_cli_token:  ENV['HOCKEY_API_TOKEN'],
+        ipa_path: target['hockey_ipa'],
+        release_notes: target['changelog']
+      )
+    end
+
+  end
+
+  lane :deploy_testflight do |options|
+    unless ENV['TESTFLIGHT_UPLOAD_FLAG'] == '0' || ENV['EXPORT_METHOD'] == "enterprise"
+      file = File.read('deploy_config.json')
+      $deploy_config = JSON.parse file
+      UI.message "Deploy config: #{pp $deploy_config}"
+
+      $deploy_config.each do |target|
+        # This checks for team_id and uses that if available
+        team_name = target['team_name']
+        team_id = target['team_id']
+        unless team_id.nil?
+          team_name = nil
+        end
+
+        pilot(
+          ipa: target['testflight_ipa'],
+          username: target['upload_account'] || DEFAULT_USERNAME,
+          team_id: team_id,
+          team_name: team_name,
+          skip_waiting_for_build_processing: true,
+          itc_provider: target['itc_provider']
+        )
+      end
+    else
+      UI.important "Skipping testflight upload due to project.yml settings"
+    end
+  end
+
+  lane :notify_slack do |options|
+
+    error = File.read('../error_message') if File.file?('../error_message')
+
+    unless error
+      UI.message "Success!"
+      config = JSON.parse ENV["NOTIFY_CONFIG"]
+
+      config.each do |target|
+        hockeylink = target['hockey_link'] || "Hockey build disabled"
+        if ENV['TESTFLIGHT_UPLOAD_FLAG'] == '1'
+          testflightmessage = "New build processing on Testflight"
+        else
+          testflightmessage = "Testflight build disabled"
+        end
+
+        slack(
+          message: "Build succeeded for #{target['scheme']} #{target['configuration']} \n Version #{target["xcode_version"]} (#{target["xcode_build"]})",
+          channel: ENV["SLACK_CHANNEL"],
+          success: true,
+          username: "iOS CI",
+          payload: {
+        	 "Hockey" => hockeylink,
+        	 "Testflight" => testflightmessage
+          },
+          default_payloads: [:git_branch, :git_author]
+        )
+      end
+    else
+      UI.message "Error"
+      slack(
+        message: error,
+        channel: "ios-ci",
+        success: false,
+        username: "iOS CI",
+        payload: {
+          "Project" => ENV["BITRISEIO_GIT_REPOSITORY_SLUG"],
+          "Build" => ENV["BITRISE_BUILD_URL"]
+        },
+        default_payloads: [:git_branch, :git_author]
+      )
+      File.delete('../error_message')
+    end
+  end
+
+  # ---------------------------------------
+  # CUSTOM
+  # ---------------------------------------
+
+  # ---------------------------------------
+  # Build
+  # ---------------------------------------
+
+  def build(target, options)
+    scheme = options['scheme']
+    export_method = ENV['EXPORT_METHOD']
+
+    UI.header "Building #{target} with scheme #{scheme} in #{options['configuration']} configuration and export method #{export_method}."
+
+    # Fastlane wont let you pass both a workspace and project
+    workspace = options['workspace']
+    project = options['xcodeproj']
+
+    unless workspace.nil?
+      project = nil
+      UI.header "Installing Cocoapods"
+      cocoapods(repo_update: true)
+    end
+
+    testflight_upload_enabled = ENV['TESTFLIGHT_UPLOAD_FLAG'] == '1'
+    hockey_upload_enabled = ENV['HOCKEY_UPLOAD_FLAG'] == '1'
+
+    # Obfuscation
+    #------------
+    if ENV['OBFUSCATE_CODE'] == "1"
+      UI.header "Running obfuscating step."
+      obfuscate(target, options, workspace, project, scheme)
+    else
+      UI.header "Skipping obfuscating step."
+    end
+
+    if export_method == "enterprise"
+
+      UI.header "Export method is: Enterprise"
+
+      # Hockey
+      # ----------
+
+      if hockey_upload_enabled
+        hockey_ipa = build_hockey_matchfile_certificate(target, options, workspace, project)
+      end
+
+    else
+
+      UI.header "Export method is: Default"
+
+      # Testflight
+      # ----------
+
+      if testflight_upload_enabled
+        testflight_ipa = buildAppStore(target, options, workspace, project)
+      end
+
+      # Hockey
+      # ----------
+
+      if hockey_upload_enabled || testflight_upload_enabled
+          hockey_ipa = build_hockey_nodes_enterprise(target, options, workspace, project)
+      end
+
+      team_name = set_team_name(options, export_method, testflight_upload_enabled)
+
+    end
+
+
+    $deploy_config << {
+      'testflight_ipa' => testflight_ipa,
+      'hockey_ipa' => hockey_ipa,
+      'dsym' => (testflight_ipa ||= "").sub('.ipa', '.app.dSYM.zip'),
+      'hockey_dsym' => (hockey_ipa ||= "").sub('.ipa', '.app.dSYM.zip'),
+      'hockey_app_id' => options['hockey-app-id'],
+      'changelog' => ENV['COMMIT_CHANGELOG'],
+      'team_name' => team_name,
+      'team_id' => options["team_id"],
+      'itc_provider' => options["itc_provider"],
+      'scheme' => options['scheme'],
+      'configuration' => options['configuration'],
+      'xcode_version' => options['xcode_version'],
+      'xcode_build' => options['xcode_build'],
+      'upload_account' => options['testflight-upload-account']
+    }
+
+    $notify_config << {
+      'scheme' => options['scheme'],
+      'configuration' => options['configuration'],
+      'xcode_version' => options['xcode_version'],
+      'xcode_build' => options['xcode_build']
+    }
+
+    UI.success "Successfully built everything."
+  end
+
+  def set_team_name(options, export_method, testflight_upload_enabled)
+    team_name = options["team-name"]
+    if team_name.nil?
+      if export_method == "enterprise" || testflight_upload_enabled
+
+        export_method_match = export_method == "enterprise" ? "enterprise" : "appstore"
+        bundle_id = export_method == "enterprise" ? "*" : options['bundle_id']
+
+        path_env_var = "sigh_#{bundle_id}_#{export_method_match}_profile-path"
+        team_env_var = "sigh_#{bundle_id}_#{export_method_match}_team-id"
+        provisioning_profile_path = ENV["#{path_env_var}"]
+
+        return get_team_name(provisioning_profile_path)
+      else
+        return DEFAULT_ENTERPRISE_TEAM
+      end
+    end
+  end
+
+  # ---------------------------------------
+  # Build Hockey
+  # ---------------------------------------
+
+  def build_hockey_nodes_enterprise(target, options, workspace, project)
+    UI.header "Starting Hockey build"
+
+    archive_path = "#{Dir.pwd}/../archive.xcarchive"
+
+    # Already built for Testflight, so we just need to re-export it and not build
+    if File.exist?(archive_path)
+      UI.message "Testflight archive already created, skipping hockey build and re-exporting instead"
+      return resignAndExport(target, options, workspace, project, archive_path)
+    else
+      extensions_ids = options["extensions-bundle-ids"] ||= Hash.new
+      sign_with_nodes_enterprise(target, options, workspace, extensions_ids)
+    end
+
+    UI.message "Creating Hockey build without bitcode and entitlements"
+    ipa_path = gym(
+      workspace: workspace,
+      project: project,
+      scheme: options['scheme'],
+      output_name: "#{options['scheme']}-hockey",
+      configuration: options['configuration'],
+      include_bitcode: false,
+      xcargs: "CODE_SIGN_ENTITLEMENTS=''",
+      archive_path: archive_path,
+      skip_build_archive: false, # TODO: this should be improved in the future to re-use testflight builds, but entitlements need to be stripped
+      export_method: "enterprise",
+      export_team_id: DEFAULT_ENTERPRISE_TEAM,
+      export_xcargs: "CODE_SIGN_ENTITLEMENTS=''"
+    )
+
+    UI.message "Generated Hockey IPA at: #{ipa_path}"
+
+    return ipa_path
+  end
+
+  def build_hockey_matchfile_certificate(target, options, workspace, project)
+    UI.header "Starting Hockey build"
+
+    sign_with_matchfile_certificate(target, options, workspace, options['bundle_id'], "enterprise")
+    sign_app_extensions(target, options, workspace, project, "enterprise")
+
+    archive_path = "#{Dir.pwd}/../archive.xcarchive"
+    team_env_var = "sigh_#{options['bundle_id']}_enterprise_team-id"
+    team_id = ENV["#{team_env_var}"]
+
+    UI.message "Creating Hockey build without bitcode and entitlements"
+    ipa_path = gym(
+      workspace: workspace,
+      project: project,
+      scheme: options['scheme'],
+      output_name: "#{options['scheme']}-hockey",
+      configuration: options['configuration'],
+      include_bitcode: true,
+      xcargs: "CODE_SIGN_ENTITLEMENTS=''",
+      archive_path: archive_path,
+      export_method: "enterprise",
+      export_team_id: team_id
+    )
+
+    UI.message "Generated Hockey IPA at: #{ipa_path}"
+
+    return ipa_path
+  end
+
+  # ---------------------------------------
+  # Build AppStore
+  # ---------------------------------------
+
+  def buildAppStore(target, options, workspace, project)
+    UI.header "Starting TestFlight build"
+    UI.header "SIGN for #{options['bundle_id']}"
+
+    sign_with_matchfile_certificate(target, options, workspace, options['bundle_id'], "appstore")
+    sign_app_extensions(target, options, workspace, project, "appstore")
+
+    # Build
+    UI.message "Creating Testflight build"
+
+    # Add badge for beta builds
+    if options['configuration'] != "Release" && options['enable-badge'] == true
+      UI.message "Adding badge"
+      version = options['xcode_version']
+      build = options['xcode_build']
+      add_badge(shield: "#{version}-#{build}-blue")
+    else
+      UI.important "Skpping badge"
+    end
+
+    archive_path = "#{Dir.pwd}/../archive.xcarchive"
+    team_env_var = "sigh_#{options['bundle_id']}_appstore_team-id"
+    team_id = ENV["#{team_env_var}"]
+
+    UI.header "There goes GYM"
+
+    ipa_path = gym(
+      workspace: workspace,
+      project: project,
+      scheme: options['scheme'],
+      configuration: options['configuration'],
+      export_method: "app-store",
+      archive_path: archive_path,
+      export_team_id: team_id,
+      codesigning_identity: "iPhone Distribution"
+    )
+    UI.message "Generated TestFlight IPA at: #{ipa_path}"
+
+    return ipa_path
+  end
+
+  def sign_app_extensions(target, options, workspace, project, export_method_match)
+    # Install certificates and profiles for extensions
+    extensions_ids = options["extensions-bundle-ids"] ||= Hash.new
+    unless extensions_ids.empty?
+      extensions_ids.each_pair do |ext_target, ext_id|
+        UI.header "SIGN for #{ext_id}"
+        UI.message "Installing certificate and profiles for extension: #{ext_id}"
+        sign_with_matchfile_certificate(ext_target, options, workspace, ext_id, export_method_match)
+      end
+    end
+  end
+
+  # ---------------------------------------
+  # CODE OBFUSCATION
+  # ---------------------------------------
+
+  def obfuscate(target, options, workspace, project, scheme)
+    UI.header "Obfuscating code"
+
+    download_and_save_lastest_obfuscator
+
+    sign_project_for_hockey(target, options, workspace, project)
+
+    sh("../swiftshield -automatic -project-root #{File.dirname(project)}/ -automatic-project-file #{project} -automatic-project-scheme #{scheme} -verbose")
+    sh("echo $?")
+  end
+
+  def download_and_save_lastest_obfuscator
+    download_url = get_github_obfuscator_asset_download_url
+
+    UI.message "Attempting to download asset from url: #{download_url}"
+
+    # download asset
+    File.open('swiftshield.zip', "wb") do |file|
+      # save swiftshield.zip in root
+      file.write open(download_url).read
+
+      shield_zip_path = "../swiftshield.zip"
+      shield_unzip_path = "../"
+
+      # unzip downloaed swiftshield.zip
+      unzip_file(file: file, destination: shield_unzip_path)
+      # remove swiftshield.zip
+      UI.message "Removing file at path: #{shield_zip_path}"
+      File.delete(shield_zip_path) if File.exist?(shield_zip_path)
+    end
+  end
+
+  # gets obfuscator download URL from the latest release on Github
+  def get_github_obfuscator_asset_download_url
+    auth = {:username => GITHUB_USER, :password => GITHUB_TOKEN}
+    response = HTTParty.get('https://api.github.com/repos/rockbruno/swiftshield/releases/latest', :basic_auth => auth)
+    parsed_response_json = JSON.parse(response.body)
+
+    assets = parsed_response_json["assets"]
+
+    shield_asset = assets.find { |asset| asset["name"].include? "swiftshield.zip" }
+
+    if shield_asset != nil
+      shield_asset_download_url = shield_asset["browser_download_url"]
+      UI.message "Got asset download url: #{shield_asset_download_url}"
+      return shield_asset_download_url
+    else
+      UI.message "Could not find asset nstack-translations-generator.bundle.zip attached to the release"
+      # restore replaced files to default
+      exit
+    end
+
+  end
+
+  # MARK: - Unzip
+
+  def unzip_file(file:, destination:)
+      ::Zip::File.open(file) do |zip_file|
+        puts " -> Unzipping #{zip_file}"
+          zip_file.each do |file|
+            file_path = File.join(destination, file.name)
+            UI.message "Unzipping file at #{file_path}"
+            # extract file and replace if needed
+            zip_file.extract(file, file_path) { true }
+          end
+      end
+  end
+
+  # ---------------------------------------
+  # Sign Project
+  # ---------------------------------------
+
+  # signs project with Nodes enterprise certificates
+  def sign_with_nodes_enterprise(target, options, workspace, extensions_ids)
+
+    # Certificates and profiles
+    UI.message "Installing Nodes Enterprise certificate and profiles"
+
+    sign_project(
+      runs_match: true,
+      git_branch: DEFAULT_ENTERPRISE_BRANCH,
+      type: "enterprise",
+      app_identifier: "*",
+      xcodeproj: options['xcodeproj'],
+      target: target,
+      team_id: DEFAULT_ENTERPRISE_TEAM,
+      profile_path: 'sigh_*_enterprise_profile-path',
+      code_signing_identity: "iPhone Distribution: Nodes Aps"
+    )
+
+    # Sign extensions as well
+
+    unless extensions_ids.empty?
+      extensions_ids.each_pair do |ext_target, ext_id|
+        UI.message "Installing enterprise certificate and profiles for extension: #{ext_id}"
+
+        sign_project(
+          runs_match: false,
+          git_branch: DEFAULT_ENTERPRISE_BRANCH,
+          type: "enterprise",
+          app_identifier: "*",
+          xcodeproj: options['xcodeproj'],
+          target: ext_target,
+          team_id: DEFAULT_ENTERPRISE_TEAM,
+          profile_path: 'sigh_*_enterprise_profile-path',
+          code_signing_identity: "iPhone Distribution: Nodes Aps"
+        )
+      end
+    end
+  end
+
+  # signs project with certificates from matchfile
+  def sign_with_matchfile_certificate(target, options, workspace, bundle_id, export_method_match)
+    path_env_var = "sigh_#{bundle_id}_#{export_method_match}_profile-path"
+    team_env_var = "sigh_#{bundle_id}_#{export_method_match}_team-id"
+
+      # Certificates and profiles
+      UI.message "Installing Matchile #{export_method_match} certificate and profiles"
+
+      sign_project(
+        runs_match: true,
+        git_branch: options["match-git-branch"],
+        type: export_method_match,
+        app_identifier: bundle_id,
+        xcodeproj: options['xcodeproj'],
+        target: target,
+        team_id: ENV["#{team_env_var}"],
+        profile_path: path_env_var,
+        code_signing_identity: nil
+      )
+
+  end
+
+  # ---------------------------------------
+  # Runs fastlane match
+  # Turns off Automatic Signing
+  # Updates Provisioning Profile
+  # ---------------------------------------
+
+  def sign_project(runs_match:, git_branch:, type:, app_identifier:, xcodeproj:, target:, team_id:, profile_path:, code_signing_identity:)
+
+    # Turns off Automatic Signing
+    UI.message "Disabling automatic code signing"
+    disable_automatic_code_signing(
+      path: xcodeproj,
+      targets: target,
+      team_id: team_id
+    )
+
+    # Runs fastlane match
+    if runs_match
+      UI.message "Installing Certificates -> Running fastlane match"
+      match(
+        git_url: DEFAULT_MATCH_REPO,
+        git_branch: git_branch,
+        type: type,
+        app_identifier: app_identifier,
+        team_id: team_id,
+        readonly: true
+      )
+    else
+      UI.message "Skipping Installing Certificates"
+    end
+
+    # Set provisioning profile
+    UI.message "Setting provisioning profile path to #{profile_path}"
+    UI.message "Setting provisioning profile to #{ENV["#{profile_path}"]}"
+    update_project_provisioning(
+      xcodeproj: xcodeproj,
+      target_filter: "^#{target}$",
+      profile: ENV["#{profile_path}"],
+      code_signing_identity: "iPhone Distribution: Nodes Aps"
+    )
+
+  end
+
+  # ---------------------------------------
+  # Re-exports archive without bitcode
+  # Runs match with Nodes Enterprise
+  # Resigns project
+  # ---------------------------------------
+  def resignAndExport(target, options, workspace, project, archive_path)
+
+    UI.header "Re-exporting archive without bitcode"
+    second_path = gym(
+      workspace: workspace,
+      project: project,
+      scheme: options['scheme'],
+      output_name: "#{options['scheme']}-hockey",
+      configuration: options['configuration'],
+      include_bitcode: false,
+      skip_build_archive: true,
+      archive_path: archive_path
+    )
+    UI.message "Generated non-bitcode IPA at: #{second_path}"
+
+
+    # Hockey
+    # ----------
+    UI.message "Installing certificate and profiles"
+        match(
+          git_url: DEFAULT_MATCH_REPO,
+          git_branch: DEFAULT_ENTERPRISE_BRANCH,
+          type: "enterprise",
+          app_identifier: "*",
+          team_id: DEFAULT_ENTERPRISE_TEAM,
+          readonly: true
+        )
+
+    UI.message "Creating Hockey build"
+
+    resign(
+      ipa: second_path,
+      signing_identity: "iPhone Distribution: Nodes Aps",
+      provisioning_profile: ENV['sigh_*_enterprise_profile-path'],
+      use_app_entitlements: false,
+      verbose: true
+    )
+
+    UI.success "Hockey IPA at: #{second_path}"
+    return second_path
+  end
+
+  def get_team_name(profile)
+    # Scrub replaces non-UTF8 characters with ?
+    content = File.open(profile).read().scrub("?")
+
+    # Get match for team name
+    matches = content.scan /<key>TeamName<\/key>[\s]*<string>(...*)<\/string>/
+
+    # Return match
+    return matches[0].to_s[2...-2] # Removes the brackets and quotes surrounding ["team_name"]
+  end
+
+  def save_deploy_info()
+      UI.message "Saving deployment information."
+      File.open('deploy_config.json', 'w') { |file| file.write($deploy_config.to_json) }
+      puts $deploy_config
+      system "bitrise envman add --key DEPLOY_CONFIG --value '#{$deploy_config.to_json}' --no-expand"
+  end
+  def save_notify_info()
+    system "bitrise envman add --key NOTIFY_CONFIG --value '#{$notify_config.to_json}' --no-expand"
+  end
+
+  def addErrorMessage(message)
+    File.open('../error_message', 'w') { |file| file.write(message) }
+  end
+
+end
+
+# More information about multiple platforms in fastlane: https://github.com/fastlane/fastlane/blob/master/fastlane/docs/Platforms.md
+# All available actions: https://github.com/fastlane/fastlane/blob/master/fastlane/docs/Actions.md
+
+# fastlane reports which actions are used
+# No personal data is recorded. Learn more at https://github.com/fastlane/enhancer
