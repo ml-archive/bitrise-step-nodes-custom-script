@@ -68,7 +68,7 @@ platform :ios do
     end
     save_notify_info
   end
-
+=begin
   lane :deploy_hockey do |options|
 
     if ENV['HOCKEY_UPLOAD_FLAG'] == '1' || ENV['TESTFLIGHT_UPLOAD_FLAG'] == '1'
@@ -102,16 +102,16 @@ platform :ios do
       UI.important "Skipping hockey upload due to project.yml settings."
     end
   end
-
+=end
   lane :deploy_firebase do |options|
     $notify_config.clear
     file = File.read('deploy_config.json')
     $deploy_config = JSON.parse file
     $deploy_config.each do |target|
       firebase_app_distribution(
-        app: target['hockey_app_id'],
-        firebase_cli_token:  ENV['HOCKEY_API_TOKEN'],
-        ipa_path: target['hockey_ipa'],
+        app: target['firebase_app_id'],
+        firebase_cli_token:  ENV['FIREBASE_API_TOKEN'],
+        ipa_path: target['firebase_ipa'],
         release_notes: target['changelog']
       )
     end
@@ -155,7 +155,7 @@ platform :ios do
       config = JSON.parse ENV["NOTIFY_CONFIG"]
 
       config.each do |target|
-        hockeylink = target['hockey_link'] || "Hockey build disabled"
+#        hockeylink = target['hockey_link'] || "Hockey build disabled"
         if ENV['TESTFLIGHT_UPLOAD_FLAG'] == '1'
           testflightmessage = "New build processing on Testflight"
         else
@@ -168,7 +168,7 @@ platform :ios do
           success: true,
           username: "iOS CI",
           payload: {
-        	 "Hockey" => hockeylink,
+#        	 "Hockey" => hockeylink,
         	 "Testflight" => testflightmessage
           },
           default_payloads: [:git_branch, :git_author]
@@ -216,7 +216,7 @@ platform :ios do
     end
 
     testflight_upload_enabled = ENV['TESTFLIGHT_UPLOAD_FLAG'] == '1'
-    hockey_upload_enabled = ENV['HOCKEY_UPLOAD_FLAG'] == '1'
+    firebase_upload_enabled = ENV['FIREBASE_UPLOAD_FLAG'] == '1'
 
     # Obfuscation
     #------------
@@ -231,11 +231,11 @@ platform :ios do
 
       UI.header "Export method is: Enterprise"
 
-      # Hockey
+      # Firebase
       # ----------
 
-      if hockey_upload_enabled
-        hockey_ipa = build_hockey_matchfile_certificate(target, options, workspace, project)
+      if firebase_upload_enabled
+        firebase_ipa = build_firebase_matchfile_certificate(target, options, workspace, project)
       end
 
     else
@@ -249,11 +249,11 @@ platform :ios do
         testflight_ipa = buildAppStore(target, options, workspace, project)
       end
 
-      # Hockey
+      # Firebase
       # ----------
 
-      if hockey_upload_enabled || testflight_upload_enabled
-          hockey_ipa = build_hockey_nodes_enterprise(target, options, workspace, project)
+      if firebase_upload_enabled || testflight_upload_enabled
+          firebase_ipa = build_firebase_nodes_enterprise(target, options, workspace, project)
       end
 
       team_name = set_team_name(options, export_method, testflight_upload_enabled)
@@ -263,10 +263,10 @@ platform :ios do
 
     $deploy_config << {
       'testflight_ipa' => testflight_ipa,
-      'hockey_ipa' => hockey_ipa,
+      'firebase_ipa' => firebase_ipa,
       'dsym' => (testflight_ipa ||= "").sub('.ipa', '.app.dSYM.zip'),
-      'hockey_dsym' => (hockey_ipa ||= "").sub('.ipa', '.app.dSYM.zip'),
-      'hockey_app_id' => options['hockey-app-id'],
+      'firebase_dsym' => (firebase_ipa ||= "").sub('.ipa', '.app.dSYM.zip'),
+      'firebase_app_id' => options['firebase-app-id'],
       'changelog' => ENV['COMMIT_CHANGELOG'],
       'team_name' => team_name,
       'team_id' => options["team_id"],
@@ -308,29 +308,29 @@ platform :ios do
   end
 
   # ---------------------------------------
-  # Build Hockey
+  # Build Firebase
   # ---------------------------------------
 
-  def build_hockey_nodes_enterprise(target, options, workspace, project)
-    UI.header "Starting Hockey build"
+  def build_firebase_nodes_enterprise(target, options, workspace, project)
+    UI.header "Starting Firebase build"
 
     archive_path = "#{Dir.pwd}/../archive.xcarchive"
 
     # Already built for Testflight, so we just need to re-export it and not build
     if File.exist?(archive_path)
-      UI.message "Testflight archive already created, skipping hockey build and re-exporting instead"
+      UI.message "Testflight archive already created, skipping firebase build and re-exporting instead"
       return resignAndExport(target, options, workspace, project, archive_path)
     else
       extensions_ids = options["extensions-bundle-ids"] ||= Hash.new
       sign_with_nodes_enterprise(target, options, workspace, extensions_ids)
     end
 
-    UI.message "Creating Hockey build without bitcode and entitlements"
+    UI.message "Creating Firebase build without bitcode and entitlements"
     ipa_path = gym(
       workspace: workspace,
       project: project,
       scheme: options['scheme'],
-      output_name: "#{options['scheme']}-hockey",
+      output_name: "#{options['scheme']}-firebase",
       configuration: options['configuration'],
       include_bitcode: false,
       xcargs: "CODE_SIGN_ENTITLEMENTS=''",
@@ -341,13 +341,13 @@ platform :ios do
       export_xcargs: "CODE_SIGN_ENTITLEMENTS=''"
     )
 
-    UI.message "Generated Hockey IPA at: #{ipa_path}"
+    UI.message "Generated Firebase IPA at: #{ipa_path}"
 
     return ipa_path
   end
 
-  def build_hockey_matchfile_certificate(target, options, workspace, project)
-    UI.header "Starting Hockey build"
+  def build_firebase_matchfile_certificate(target, options, workspace, project)
+    UI.header "Starting Firebase build"
 
     sign_with_matchfile_certificate(target, options, workspace, options['bundle_id'], "enterprise")
     sign_app_extensions(target, options, workspace, project, "enterprise")
@@ -356,12 +356,12 @@ platform :ios do
     team_env_var = "sigh_#{options['bundle_id']}_enterprise_team-id"
     team_id = ENV["#{team_env_var}"]
 
-    UI.message "Creating Hockey build without bitcode and entitlements"
+    UI.message "Creating Firebase build without bitcode and entitlements"
     ipa_path = gym(
       workspace: workspace,
       project: project,
       scheme: options['scheme'],
-      output_name: "#{options['scheme']}-hockey",
+      output_name: "#{options['scheme']}-firebase",
       configuration: options['configuration'],
       include_bitcode: true,
       xcargs: "CODE_SIGN_ENTITLEMENTS=''",
@@ -370,7 +370,7 @@ platform :ios do
       export_team_id: team_id
     )
 
-    UI.message "Generated Hockey IPA at: #{ipa_path}"
+    UI.message "Generated Firebase IPA at: #{ipa_path}"
 
     return ipa_path
   end
@@ -441,7 +441,7 @@ platform :ios do
 
     download_and_save_lastest_obfuscator
 
-    sign_project_for_hockey(target, options, workspace, project)
+    sign_project_for_firebase(target, options, workspace, project)
 
     sh("../swiftshield -automatic -project-root #{File.dirname(project)}/ -automatic-project-file #{project} -automatic-project-scheme #{scheme} -verbose")
     sh("echo $?")
@@ -624,7 +624,7 @@ platform :ios do
       workspace: workspace,
       project: project,
       scheme: options['scheme'],
-      output_name: "#{options['scheme']}-hockey",
+      output_name: "#{options['scheme']}-firebase",
       configuration: options['configuration'],
       include_bitcode: false,
       skip_build_archive: true,
@@ -633,7 +633,7 @@ platform :ios do
     UI.message "Generated non-bitcode IPA at: #{second_path}"
 
 
-    # Hockey
+    # Firebase
     # ----------
     UI.message "Installing certificate and profiles"
         match(
@@ -645,7 +645,7 @@ platform :ios do
           readonly: true
         )
 
-    UI.message "Creating Hockey build"
+    UI.message "Creating Firebase build"
 
     resign(
       ipa: second_path,
@@ -655,7 +655,7 @@ platform :ios do
       verbose: true
     )
 
-    UI.success "Hockey IPA at: #{second_path}"
+    UI.success "Firebase IPA at: #{second_path}"
     return second_path
   end
 

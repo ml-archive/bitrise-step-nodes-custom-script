@@ -4,7 +4,6 @@ require 'xcodeproj'
 require 'fileutils'
 require 'pp'
 require 'plist'
-require 'hockeyver'
 require 'json'
 require 'zip'
 
@@ -96,16 +95,16 @@ puts green "|- Settings loaded succesfully with configuration: #{project_setting
 
 # Load upload settings
 export_method = project_settings['export-method']
-hockey_upload = project_settings['hockey-upload'] ? 1 : 0
+firebase_upload = project_settings['firebase-upload'] ? 1 : 0
 testflight_upload = project_settings['testflight-upload'] ? 1 : 0
 obfucaste_code_for_archive = project_settings['obfuscate'] ? 1 : 0
 
 puts ""
 puts bold "Checking upload settings"
-if hockey_upload == 1
-  puts green "|- Will upload to hockey"
+if firebase_upload == 1
+  puts green "|- Will upload to Firebase"
 else
-  puts yellow "|- Skipping hockey upload"
+  puts yellow "|- Skipping Firebase upload"
 end
 if testflight_upload == 1
   puts green "|- Will upload to testflight"
@@ -168,16 +167,19 @@ if validated_targets.count > length
   validated_targets = validated_targets.select { |k, v| validated_targets.keys[start, length].include? k }
 end
 
+=begin
+
+
 puts ""
 puts bold "Starting Hockey versions verification"
 
 valid = true
-
+=end
 unless DEBUG_MODE
   # Get version and build numbers
   message = ""
   validated_targets.each_pair { |key, val|
-
+=begin
     # Find the correct configuration
     configs = val["target"].build_configurations
     index = configs.index { |x| x.name == configuration }
@@ -192,20 +194,23 @@ unless DEBUG_MODE
     xcode_build = xcode_build_source.to_i
 
     puts "|- Verifying '#{key}' with version #{xcode_version} (#{xcode_build})."
-
+=end
     # Get hockey app id object
-    hockey_app_id = val["settings"]["hockey-app-id"]
+    firebase_app_id = val["settings"]["firebase-app-id"]
 
     # Figure out if hockey app id object is a hash (for configuration mapping to ids)
     # or a String with static hockey app id
-    if hockey_app_id.respond_to?(:has_key?) then
-        raise red """|- HockeyApp app id is missing for the current configuration, please add it or switch to static app id.""" unless hockey_app_id.has_key?(configuration)
+    if firebase_app_id.respond_to?(:has_key?) then
+        raise red """|- Firebase app id is missing for the current configuration, please add it or switch to static app id.""" unless firebase_app_id.has_key?(configuration)
 
         # Parse from nested dict
-        hockey_app_id = hockey_app_id[configuration]
-        val["settings"]["hockey-app-id"] = hockey_app_id
+        firebase_app_id = firebase_app_id[configuration]
+        val["settings"]["firebase-app-id"] = firebase_app_id
     end
+  }
+end
 
+=begin
     # Check if hockey id is filled in correctly
     if hockey_app_id.empty? || !hockey_app_id.is_a?(String) then
       raise red """|- HockeyApp app id is missing, can't continue with build as version and build number can't be verified.
@@ -243,6 +248,7 @@ end
 
 # All done
 puts green "|- All version and build numbers are correct."
+=end
 
 puts ""
 puts bold "Creating information required for build"
@@ -302,7 +308,7 @@ validated_targets.each_pair { |key, val|
 # Save to env
 system "bitrise envman add --key BUILD_CONFIG --value '#{build_config.to_json}' --no-expand" unless DEBUG_MODE
 system "bitrise envman add --key EXPORT_METHOD --value '#{export_method}' --no-expand" unless DEBUG_MODE
-system "bitrise envman add --key HOCKEY_UPLOAD_FLAG --value '#{hockey_upload}' --no-expand" unless DEBUG_MODE
+system "bitrise envman add --key FIREBASE_UPLOAD_FLAG --value '#{firebase_upload}' --no-expand" unless DEBUG_MODE
 system "bitrise envman add --key TESTFLIGHT_UPLOAD_FLAG --value '#{testflight_upload}' --no-expand" unless DEBUG_MODE
 system "bitrise envman add --key SLACK_CHANNEL --value '#{project_settings['slack-channel']}' --no-expand " unless DEBUG_MODE
 system "bitrise envman add --key OBFUSCATE_CODE --value '#{obfucaste_code_for_archive}' --no-expand " unless DEBUG_MODE
