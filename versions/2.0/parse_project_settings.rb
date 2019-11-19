@@ -284,8 +284,10 @@ validated_targets.each_pair { |key, val|
 
     # Bail if not an extension type
     unless extension_target.extension_target_type?
-      puts yellow "Skipping extension with bundle id #{extension_id} as this target is not an extension target."
-      next
+      unless extension_target.sdk == "watchos"
+        puts yellow "Skipping extension with bundle id #{extension_id} as it is not an extension target."
+        next
+      end
     end
 
     # Add validated ID to extensions hash
