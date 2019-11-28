@@ -112,7 +112,8 @@ platform :ios do
         app: target['firebase_app_id'],
         firebase_cli_token:  ENV['FIREBASE_API_TOKEN'],
         ipa_path: target['firebase_ipa'],
-        release_notes: target['changelog']
+        release_notes: target['changelog'],
+        groups: options['firebase-test-groups']
       )
     end
 
@@ -275,7 +276,8 @@ platform :ios do
       'configuration' => options['configuration'],
       'xcode_version' => options['xcode_version'],
       'xcode_build' => options['xcode_build'],
-      'upload_account' => options['testflight-upload-account']
+      'upload_account' => options['testflight-upload-account'],
+      'firebase-test-groups' => options['firebase-test-groups'],
     }
 
     $notify_config << {
