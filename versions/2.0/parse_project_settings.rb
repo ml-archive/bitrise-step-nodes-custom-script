@@ -309,6 +309,7 @@ validated_targets.each_pair { |key, val|
 system "bitrise envman add --key BUILD_CONFIG --value '#{build_config.to_json}' --no-expand" unless DEBUG_MODE
 system "bitrise envman add --key EXPORT_METHOD --value '#{export_method}' --no-expand" unless DEBUG_MODE
 system "bitrise envman add --key FIREBASE_UPLOAD_FLAG --value '#{firebase_upload}' --no-expand" unless DEBUG_MODE
+system "bitrise envman add --key FIREBASE_TEST_GROUPS --value '#{firebase-test-groups}' --no-expand " unless DEBUG_MODE
 system "bitrise envman add --key TESTFLIGHT_UPLOAD_FLAG --value '#{testflight_upload}' --no-expand" unless DEBUG_MODE
 system "bitrise envman add --key SLACK_CHANNEL --value '#{project_settings['slack-channel']}' --no-expand " unless DEBUG_MODE
 system "bitrise envman add --key OBFUSCATE_CODE --value '#{obfucaste_code_for_archive}' --no-expand " unless DEBUG_MODE
