@@ -99,6 +99,7 @@ firebase_upload = project_settings['firebase-upload'] ? 1 : 0
 testflight_upload = project_settings['testflight-upload'] ? 1 : 0
 obfucaste_code_for_archive = project_settings['obfuscate'] ? 1 : 0
 firebase_test_groups = project_settings["firebase-test-groups"]
+enable_badge = project_settings['enable-badge'] ? 1 : 0
 
 puts ""
 puts bold "Checking upload settings"
@@ -315,5 +316,6 @@ system "bitrise envman add --key TESTFLIGHT_UPLOAD_FLAG --value '#{testflight_up
 system "bitrise envman add --key SLACK_CHANNEL --value '#{project_settings['slack-channel']}' --no-expand " unless DEBUG_MODE
 system "bitrise envman add --key OBFUSCATE_CODE --value '#{obfucaste_code_for_archive}' --no-expand " unless DEBUG_MODE
 system "bitrise envman add --key CI_VERSION --value '#{ci_version}' --no-expand " unless DEBUG_MODE
+system "bitrise envman add --key ENABLE_BADGE_FLAG --value '#{enable_badge}' --no-expand" unless DEBUG_MODE
 puts green "|- Succesfully generated build config."
 pp build_config unless not VERBOSE

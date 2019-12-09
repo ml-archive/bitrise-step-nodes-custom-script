@@ -392,7 +392,7 @@ platform :ios do
     UI.message "Creating Testflight build"
 
     # Add badge for beta builds
-    if options['configuration'] != "Release" && options['enable-badge'] == true
+    if options['configuration'] != "Release" && ENV['ENABLE_BADGE_FLAG'] == '1'
       UI.message "Adding badge"
       version = options['xcode_version']
       build = options['xcode_build']
